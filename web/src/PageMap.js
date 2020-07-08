@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import * as Shared from './components/PageComponents.jsx'
 import arrowl from './images/arrow-left.svg'
 
-import { Map, TileLayer, Marker, Popup, GeoJSON } from "react-leaflet";
+import { Map, TileLayer, Circle, GeoJSON } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import ReactSlider from 'react-slider'
 import Cookies from 'universal-cookie';
@@ -41,7 +41,7 @@ class PageMap extends React.Component {
 
   componentDidMount = (event) => {
     this.getCityGeojson(this.props.match.params.city)
-    this.setState({ptime: parseFloat(cookies.get('ptime'))})
+    this.setState({ptime: parseFloat(cookies.get('ptime')) || 5})
   }
 
   onEachFeature = (feature, layer) => {
@@ -251,6 +251,7 @@ class PageMap extends React.Component {
             data={this.state.geojson_data}
             style={this.styleFeatures}
             onEachFeature={this.onEachFeature.bind(this)} /> }
+            <Circle center={position} radius={50} stroke={false} fillColor={'#000'} fillOpacity={1} />
         </Map>
         </LeafletMapContainer>
         
