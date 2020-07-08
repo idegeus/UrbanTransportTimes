@@ -1,0 +1,30 @@
+{
+  "files": {
+    "main.css": "/UrbanTransportTimes/static/css/main.a4d955f5.chunk.css",
+    "main.js": "/UrbanTransportTimes/static/js/main.b642b10a.chunk.js",
+    "main.js.map": "/UrbanTransportTimes/static/js/main.b642b10a.chunk.js.map",
+    "runtime-main.js": "/UrbanTransportTimes/static/js/runtime-main.fcbbbfc3.js",
+    "runtime-main.js.map": "/UrbanTransportTimes/static/js/runtime-main.fcbbbfc3.js.map",
+    "static/css/2.7c35e809.chunk.css": "/UrbanTransportTimes/static/css/2.7c35e809.chunk.css",
+    "static/js/2.2055cac4.chunk.js": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js",
+    "static/js/2.2055cac4.chunk.js.map": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js.map",
+    "index.html": "/UrbanTransportTimes/index.html",
+    "precache-manifest.75f5ddc16fcb6231dbe70cc8d6ff75be.js": "/UrbanTransportTimes/precache-manifest.75f5ddc16fcb6231dbe70cc8d6ff75be.js",
+    "service-worker.js": "/UrbanTransportTimes/service-worker.js",
+    "static/css/2.7c35e809.chunk.css.map": "/UrbanTransportTimes/static/css/2.7c35e809.chunk.css.map",
+    "static/css/main.a4d955f5.chunk.css.map": "/UrbanTransportTimes/static/css/main.a4d955f5.chunk.css.map",
+    "static/js/2.2055cac4.chunk.js.LICENSE.txt": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js.LICENSE.txt",
+    "static/media/arrow-left.svg": "/UrbanTransportTimes/static/media/arrow-left.18be30f9.svg",
+    "static/media/bike.svg": "/UrbanTransportTimes/static/media/bike.805d6f57.svg",
+    "static/media/car.svg": "/UrbanTransportTimes/static/media/car.3b3b5dde.svg",
+    "static/media/pt.svg": "/UrbanTransportTimes/static/media/pt.cd0b451d.svg",
+    "static/media/walk.svg": "/UrbanTransportTimes/static/media/walk.73d11aa1.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.fcbbbfc3.js",
+    "static/css/2.7c35e809.chunk.css",
+    "static/js/2.2055cac4.chunk.js",
+    "static/css/main.a4d955f5.chunk.css",
+    "static/js/main.b642b10a.chunk.js"
+  ]
+}
