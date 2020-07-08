@@ -85,10 +85,39 @@ class PageMap extends React.Component {
 
       case 'fastest': 
 
-        let fastest_mode = ''
-        fastest_mode = props['bike_t'] < (props[this.formatMode('car')] + this.state.ptime) ? 'bike' : 'car'
-        fastest_mode = props[this.formatMode('pt')] < props[this.formatMode(fastest_mode)] ? 'pt' : fastest_mode
-        fastest_mode = props['walk_t'] < props[this.formatMode(fastest_mode)] ? 'walk' : fastest_mode
+        let fastest_time = 99999
+        let fastest_mode = 'none'
+
+        if( !isNaN(props[this.formatMode('car')]) 
+            && props[this.formatMode('car')] > 0
+            && (props[this.formatMode('car')] + this.state.ptime) < fastest_time){
+              fastest_mode = 'car'
+              fastest_time = (props[this.formatMode('car')] + this.state.ptime)
+        }
+
+        if(
+            !isNaN(props[this.formatMode('bike')]) 
+            && props[this.formatMode('bike')] > 0
+            && props[this.formatMode('bike')] < fastest_time){
+          fastest_mode = 'bike'
+          fastest_time = props[this.formatMode('bike')]
+        }
+
+        if(
+            !isNaN(props[this.formatMode('pt')]) 
+            && props[this.formatMode('pt')] > 0
+            && props[this.formatMode('pt')] < fastest_time){
+          fastest_mode = 'pt'
+          fastest_time = props[this.formatMode('pt')]
+        }
+
+        if(
+            !isNaN(props[this.formatMode('walk')]) 
+            && props[this.formatMode('walk')] > 0
+            && props[this.formatMode('walk')] < fastest_time){
+          fastest_mode = 'walk'
+          fastest_time = props[this.formatMode('walk')]
+        }
 
         // if(props['cell_id'] == 457){
         //   console.log(feature) 
