@@ -2,13 +2,17 @@
 
 <img src="./meta/cover-fastest-transport-Amsterdam-7.5min.png" alt="cover-fastest-transport-Amsterdam-7.5min" style="width: 100%;" />
 
-This file is not done yet ...
+This file is still a work-in-progress! 
 
 ## Online Platform
 
-Go to the most recent version using this link: https://idegeus.github.io/UrbanTransportTimes/.
+Go to the most recent online version here: https://idegeus.github.io/UrbanTransportTimes/.
 
 ## Datasets: description
+
+Just want to get the shapefiles? Download from [the latest release](https://github.com/idegeus/UrbanTransportTimes/releases/latest). 
+
+#### Graphs and aggregated files:
 
 | Path                         | Description                                                  |
 | ---------------------------- | ------------------------------------------------------------ |
