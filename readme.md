@@ -6,7 +6,7 @@ This file is still a work-in-progress!
 
 ## Online Platform
 
-Go to the most recent online version here: https://idegeus.github.io/UrbanTransportTimes/.
+Go to the most recent online version at https://urbantransporttimes.online.
 
 ## Datasets: description
 
