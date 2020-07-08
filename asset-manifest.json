@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/UrbanTransportTimes/static/css/main.a4d955f5.chunk.css",
-    "main.js": "/UrbanTransportTimes/static/js/main.7e333a93.chunk.js",
-    "main.js.map": "/UrbanTransportTimes/static/js/main.7e333a93.chunk.js.map",
+    "main.js": "/UrbanTransportTimes/static/js/main.badc307e.chunk.js",
+    "main.js.map": "/UrbanTransportTimes/static/js/main.badc307e.chunk.js.map",
     "runtime-main.js": "/UrbanTransportTimes/static/js/runtime-main.fcbbbfc3.js",
     "runtime-main.js.map": "/UrbanTransportTimes/static/js/runtime-main.fcbbbfc3.js.map",
     "static/css/2.7c35e809.chunk.css": "/UrbanTransportTimes/static/css/2.7c35e809.chunk.css",
     "static/js/2.2055cac4.chunk.js": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js",
     "static/js/2.2055cac4.chunk.js.map": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js.map",
     "index.html": "/UrbanTransportTimes/index.html",
-    "precache-manifest.6ffc60e38dca91f6c624dd8c8ae0b64b.js": "/UrbanTransportTimes/precache-manifest.6ffc60e38dca91f6c624dd8c8ae0b64b.js",
+    "precache-manifest.9f4f08ba620d2a36528e108e3148b32c.js": "/UrbanTransportTimes/precache-manifest.9f4f08ba620d2a36528e108e3148b32c.js",
     "service-worker.js": "/UrbanTransportTimes/service-worker.js",
     "static/css/2.7c35e809.chunk.css.map": "/UrbanTransportTimes/static/css/2.7c35e809.chunk.css.map",
     "static/css/main.a4d955f5.chunk.css.map": "/UrbanTransportTimes/static/css/main.a4d955f5.chunk.css.map",
@@ -25,6 +25,6 @@
     "static/css/2.7c35e809.chunk.css",
     "static/js/2.2055cac4.chunk.js",
     "static/css/main.a4d955f5.chunk.css",
-    "static/js/main.7e333a93.chunk.js"
+    "static/js/main.badc307e.chunk.js"
   ]
 }

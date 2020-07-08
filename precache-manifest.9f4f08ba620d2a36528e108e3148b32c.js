@@ -1,6 +1,6 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "af2399e5a0ae4e61b5f36b87049a4bf9",
+    "revision": "bd2a848dc5d7442535ee0e333836d950",
     "url": "/UrbanTransportTimes/index.html"
   },
   {
@@ -8,7 +8,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/UrbanTransportTimes/static/css/2.7c35e809.chunk.css"
   },
   {
-    "revision": "963d6131ad70ac36cb57",
+    "revision": "7a589dcbd3acd2876e8e",
     "url": "/UrbanTransportTimes/static/css/main.a4d955f5.chunk.css"
   },
   {
@@ -20,8 +20,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "963d6131ad70ac36cb57",
-    "url": "/UrbanTransportTimes/static/js/main.7e333a93.chunk.js"
+    "revision": "7a589dcbd3acd2876e8e",
+    "url": "/UrbanTransportTimes/static/js/main.badc307e.chunk.js"
   },
   {
     "revision": "023ab917ee8b563c0429",
