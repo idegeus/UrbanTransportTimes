@@ -236,7 +236,7 @@ class PageMap extends React.Component {
                   <tr>
                     <td>{this.decRound(this.state.current_cell.car_r_d)}</td>
                     <td>{this.decRound(this.state.current_cell.bike_d)}</td>
-                    <td>{this.decRound(this.state.current_cell.pt_r_td)}</td>
+                    <td>{this.decRound(this.state.current_cell.pt_r_d)}</td>
                     <td>{this.decRound(this.state.current_cell.walk_d)}</td>
                     <td>km</td>
                   </tr>
@@ -252,7 +252,7 @@ class PageMap extends React.Component {
                   <tr>
                     <td>{this.decRound(this.state.current_cell.car_m_d)}</td>
                     <td>{this.decRound(this.state.current_cell.bike_d)}</td>
-                    <td>{this.decRound(this.state.current_cell.pt_m_td)}</td>
+                    <td>{this.decRound(this.state.current_cell.pt_m_d)}</td>
                     <td>{this.decRound(this.state.current_cell.walk_d)}</td>
                     <td>km</td>
                   </tr>
