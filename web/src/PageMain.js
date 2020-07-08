@@ -78,7 +78,7 @@ class PageMain extends React.Component {
         <HeaderSpacer> <Header>DUTT</Header> <HeaderNiceMaker/> </HeaderSpacer>
 
         <Center style={{padding: '1rem'}}>
-          <Shared.Heading1>Database of Urban Transport Times</Shared.Heading1>
+          <Shared.Heading1>Database of Urban Transport Times <Shared.Logo style={{display: 'inline-flex', marginLeft: '1rem'}}/> </Shared.Heading1>
           <Shared.BodyText>
             This project contains the average traffic flow in the worlds cities 
             based on actual traffic information from Bing Maps. Traffic information 

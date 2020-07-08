@@ -22,7 +22,8 @@ export const Heading1 = styled.h1`
   padding: 1rem;
   background: #403D39;
   text-align: left;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   font-weight: bold;
   font-size: 2.3rem;
   color: #FFFFFF;
