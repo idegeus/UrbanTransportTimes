@@ -1,27 +1,27 @@
 self.__precacheManifest = (self.__precacheManifest || []).concat([
   {
-    "revision": "bd2a848dc5d7442535ee0e333836d950",
+    "revision": "f8f0fb591901da2b5ba4456e585112e9",
     "url": "/UrbanTransportTimes/index.html"
   },
   {
-    "revision": "a981edae0e1185957825",
+    "revision": "85b9c03abc919d5fe432",
     "url": "/UrbanTransportTimes/static/css/2.7c35e809.chunk.css"
   },
   {
-    "revision": "7a589dcbd3acd2876e8e",
+    "revision": "aaf7cc7913aaea104069",
     "url": "/UrbanTransportTimes/static/css/main.a4d955f5.chunk.css"
   },
   {
-    "revision": "a981edae0e1185957825",
-    "url": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js"
+    "revision": "85b9c03abc919d5fe432",
+    "url": "/UrbanTransportTimes/static/js/2.ae46bd91.chunk.js"
   },
   {
     "revision": "27f79e8878249bae55f598a0b8e19d20",
-    "url": "/UrbanTransportTimes/static/js/2.2055cac4.chunk.js.LICENSE.txt"
+    "url": "/UrbanTransportTimes/static/js/2.ae46bd91.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "7a589dcbd3acd2876e8e",
-    "url": "/UrbanTransportTimes/static/js/main.badc307e.chunk.js"
+    "revision": "aaf7cc7913aaea104069",
+    "url": "/UrbanTransportTimes/static/js/main.19a978b1.chunk.js"
   },
   {
     "revision": "023ab917ee8b563c0429",

@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/UrbanTransportTimes/precache-manifest.9f4f08ba620d2a36528e108e3148b32c.js"
+  "/UrbanTransportTimes/precache-manifest.9b48d000b78cbb96ed6dfe804cb06f9b.js"
 );
 
 self.addEventListener('message', (event) => {
