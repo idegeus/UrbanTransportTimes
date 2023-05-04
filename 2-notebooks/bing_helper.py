@@ -98,7 +98,7 @@ class Bing:
         # Check cache
         fetched = self._check_caches(city_id, batch)
         to_fetch = batch[fetched.geometry.isna()]
-        logging.warning(f"Out of total {len(batch)}, {100-len(to_fetch)/len(batch)*100:.2f}% cached.")
+        logging.info(f"Out of total {len(batch)}, {100-len(to_fetch)/len(batch)*100:.2f}% cached.")
         
         # Fetch in groups, first requesting it and then asking asynchronously for it.
         groupsize = 50
