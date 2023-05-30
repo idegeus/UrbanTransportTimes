@@ -225,7 +225,7 @@ server:
   - type: http
     port: 8989
     # for security reasons bind to localhost
-    # bind_host: localhost
+    #  bind_host: localhost
     # increase GET request limit - not necessary if /maps UI is not used or used without custom models
     max_request_header_size: 50k
   request_log:
@@ -257,4 +257,8 @@ logging:
         - type: file
           currentLogFilename: 1-data/2-gh/logs/osm_warnings.log
           archive: false
+<<<<<<< HEAD
           logFormat: '[%level] %msg%n'
+=======
+          logFormat: '[%level] %msg%n'
+>>>>>>> 05f9fde (chore: small changes)

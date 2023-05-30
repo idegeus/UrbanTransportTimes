@@ -4,6 +4,10 @@
 1-data/2-external/**/*.*
 1-data/2-external/*.*
 1-data/2-gh/**/*.*
+1-data/2-gh/osm/*.*
+1-data/2-gh/gtfs/*.*
+1-data/2-gh/graph-cache/*.*
+1-data/2-gh/logs/**/*.*
 
 1-data/3-interim/bing_cache.db
 
