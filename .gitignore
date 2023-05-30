@@ -3,9 +3,8 @@
 
 1-data/2-external/**/*.*
 1-data/2-external/*.*
-1-data/2-gtfs-feeds/*.*
-1-data/2-osm-extracts/*.*
+1-data/2-gh/**/*.*
 
 1-data/3-interim/bing_cache.db
 
-2-graphhopper/
+graphhopper/
