@@ -1,13 +1,13 @@
 graphhopper:
 
   # OpenStreetMap input file PBF or XML, can be changed via command line -Ddw.graphhopper.datareader.file=some.pbf
-  datareader.file: "1-data/2-gh/osm/amsterdam.osm.pbf"
+  datareader.file: "/1-data/2-gh/osm/amsterdam.osm.pbf"
 
   # Local folder used by graphhopper to store its data
-  graph.location: "1-data/2-gh/graph-cache"
+  graph.location: "/1-data/2-gh/graph-cache"
 
   # Add GTFS feeds to route generation. 
-  gtfs.file: 1-data/2-gh/gtfs/gtfs-nl.zip
+  gtfs.file: "/1-data/2-gh/gtfs/gtfs-nl.zip"
 
   ##### Routing Profiles ####
 
@@ -257,8 +257,4 @@ logging:
         - type: file
           currentLogFilename: 1-data/2-gh/logs/osm_warnings.log
           archive: false
-<<<<<<< HEAD
           logFormat: '[%level] %msg%n'
-=======
-          logFormat: '[%level] %msg%n'
->>>>>>> 05f9fde (chore: small changes)
