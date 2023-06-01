@@ -40,6 +40,7 @@ geopandas==0.12.2
 geopy==2.3.0
 gtfs-kit==5.2.6
 gtfsutils==0.0.5
+h3==3.7.6
 idna==3.4
 importlib-metadata==6.6.0
 importlib-resources==5.12.0
@@ -127,12 +128,14 @@ soupsieve==2.3.2.post1
 stack-data==0.6.2
 terminado==0.17.1
 threadpoolctl==3.1.0
+timezonefinder==6.2.0
 tinycss2==1.2.1
 tornado==6.3
 tqdm==4.65.0
 traitlets==5.9.0
 typing_extensions==4.5.0
 tzdata==2023.3
+tzwhere==3.0.3
 urllib3==1.26.15
 utm==0.7.0
 wcwidth==0.2.6
