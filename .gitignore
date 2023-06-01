@@ -12,3 +12,5 @@
 1-data/3-interim/bing_cache.db
 
 graphhopper/
+**/.DS_Store
+4-misc/

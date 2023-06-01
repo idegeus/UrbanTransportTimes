@@ -7,7 +7,7 @@ graphhopper:
   graph.location: "/1-data/2-gh/graph-cache"
 
   # Add GTFS feeds to route generation. 
-  gtfs.file: "/1-data/2-gh/gtfs/gtfs-nl.zip"
+  gtfs.file: "/1-data/2-gh/gtfs/gtfs-nl-amsterdam.zip"
 
   ##### Routing Profiles ####
 
@@ -243,7 +243,7 @@ logging:
       current_log_filename: 1-data/2-gh/logs/graphhopper.log
       log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
       archive: true
-      archived_log_filename_pattern: ./logs/graphhopper-%d.log.gz
+      archived_log_filename_pattern: ./1-data/2-gh/logs/graphhopper-%d.log.gz
       archived_file_count: 30
       never_block: true
     - type: console
