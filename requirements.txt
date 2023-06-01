@@ -9,6 +9,7 @@ backcall==0.2.0
 backports.functools-lru-cache==1.6.4
 beautifulsoup4==4.12.2
 bleach==6.0.0
+blinker==1.6.2
 branca==0.6.0
 brotlipy==0.7.0
 certifi==2022.12.7
@@ -31,6 +32,7 @@ et-xmlfile==1.1.0
 executing==1.2.0
 fastjsonschema==2.16.3
 Fiona==1.9.3
+Flask==2.3.2
 flit_core==3.8.0
 folium==0.14.0
 fonttools==4.39.3
@@ -48,6 +50,7 @@ ipykernel==6.22.0
 ipython==8.12.0
 ipython-genutils==0.2.0
 ipywidgets==8.0.6
+itsdangerous==2.1.2
 jedi==0.18.2
 Jinja2==3.1.2
 joblib==1.2.0
@@ -141,6 +144,7 @@ utm==0.7.0
 wcwidth==0.2.6
 webencodings==0.5.1
 websocket-client==1.5.1
+Werkzeug==2.3.4
 wheel==0.40.0
 widgetsnbextension==4.0.7
 xyzservices==2023.2.0
