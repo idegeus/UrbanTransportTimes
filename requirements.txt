@@ -72,11 +72,6 @@ mercantile==1.2.1
 mistune==2.0.5
 munch==2.5.0
 munkres==1.1.4
-nb-conda-kernels==2.3.1
-nbclassic==0.5.5
-nbclient==0.7.3
-nbconvert==7.3.1
-nbformat==5.8.0
 nest-asyncio==1.5.6
 networkx==3.1
 notebook==6.5.4

@@ -25,19 +25,17 @@ def extract_osm(osm_src, osm_out, bbox, buffer_m=0, overwrite=False):
         logging.info(f'Extract already exists: {osm_out}')
         return 0
     
-    logging.info(f"Starting extraction to {osm_out}, this might take some time.")
+    # Define bounding box and add buffer if required
     bbox_gdf = gpd.GeoSeries(data=[bbox], crs="EPSG:4326")
-    
-    # Add buffer if required
     if buffer_m > 0:
         bbox_gdf = bbox_gdf.to_crs(bbox_gdf.estimate_utm_crs()).buffer(buffer_m).to_crs(bbox_gdf.crs)
-        
     
     # Extract string coordinates. 
     bounds = bbox_gdf.geometry[0].bounds
     bbox_str = f"{bounds[0]},{bounds[1]},{bounds[2]},{bounds[3]}"
     
     # Run extraction. 
+    logging.info(f"Starting extraction to {osm_out}, this might take some time.")
     result = subprocess.run(['osmium', 'extract', '--bbox', bbox_str, '-o', osm_out, osm_src, '--overwrite'])
     logging.info(result)
     return 0

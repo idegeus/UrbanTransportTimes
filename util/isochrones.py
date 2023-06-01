@@ -255,7 +255,6 @@ class Isochrones:
 def test():
     
     logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
-    logging.info("Hello!")
     DROOT = '../1-data'
     
     BING_KEY = os.environ.get('BING_API_KEY')

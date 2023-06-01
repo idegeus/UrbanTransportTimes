@@ -10,7 +10,9 @@
 1-data/2-gh/logs/
 
 1-data/3-interim/bing_cache.db
+1-data/3-interim/graphhopper.db
 
 graphhopper/
 **/.DS_Store
 4-misc/
+**/__pycache__

@@ -10,28 +10,27 @@ class Downloader:
     def __init__(self, tl_key):
         self.tl_key = tl_key
         
-    def set_bbox(self, bbox):
+    def set_search(self, point, bbox, radius=10000):
+        """Set search info for downloading GTFS files
+
+        Args:
+            point (Point):  Shapely Point as center for searching agency feeds.
+            radius (int):   Integer with radius to search Transitland for feeds within
+            bbox (Polygon): Shapely Polygon, GTFS feeds within or intersecting will remain. 
+        """
+        assert isinstance(point, Point)
+        assert isinstance(radius, int)
         assert isinstance(bbox, Polygon)
+        
+        self.point = point
+        self.radius = radius
         self.bbox_polygon = bbox
         
         bbox_gdf = gpd.GeoDataFrame(geometry=[bbox], crs="EPSG:4326")
         bbox_gdf.geometry = bbox_gdf.to_crs(bbox_gdf.estimate_utm_crs()).buffer(5000).to_crs(bbox_gdf.crs)
         self.bbox_gdf = bbox_gdf
         
-    def set_searchpoint(self, point, radius):
-        assert isinstance(point, Point)
-        assert isinstance(radius, int)
-        self.point = point
-        self.radius = radius
-        
-    def download_feeds(self, target_dir, city_id):
-        
-        assert os.path.exists(target_dir)
-        assert isinstance(city_id, str) or isinstance(city_id, int)
-        
-        # Create in- and output directories.
-        os.makedirs(os.path.join(target_dir, 'src'), exist_ok=True)
-        os.makedirs(os.path.join(target_dir, 'out'), exist_ok=True)
+    def search_feeds(self):
         
         # Fetch agencies operating in the area around the constructed centroid. 
         logging.info(f"Fetching agencies & trips {self.radius} meters around {str(self.point)}.")
@@ -49,7 +48,18 @@ class Downloader:
         feeds = [agency['feed_version'] for agency in res['agencies']]
         feed_ids = list(set([feed['feed']['onestop_id'] for feed in feeds]))
         logging.info(f"Fetched {len(feed_ids)} relevant feeds {str(feed_ids)}")
-
+        
+        return feed_ids
+        
+    def download_feeds(self, feed_ids, target_dir, city_id):
+        
+        assert os.path.exists(target_dir)
+        assert isinstance(city_id, str) or isinstance(city_id, int)
+        
+        # Create in- and output directories.
+        os.makedirs(os.path.join(target_dir, 'src'), exist_ok=True)
+        os.makedirs(os.path.join(target_dir, 'out'), exist_ok=True)
+        
         # Download relevant source feeds.
         for feed_id in feed_ids:
             
