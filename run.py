@@ -13,6 +13,7 @@ from datetime import datetime
 from timezonefinder import TimezoneFinder
 from dotenv import load_dotenv
 import docker
+import yaml
 
 # Import custom libraries
 from util.isochrones import Isochrones
@@ -53,9 +54,20 @@ for pid, city in cities.iterrows():
     gtfs_client = Downloader(os.environ.get("TRANSITLAND_KEY"))
     gtfs_client.set_search(bbox.centroid, bbox, 10000)
     feed_ids = gtfs_client.search_feeds()
-    gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gh', 'gtfs'), city.ID_HDC_G0)
+    gtfs_out_dir = os.path.join(DROOT, '2-gh', 'gtfs')
+    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.ID_HDC_G0)
     
-    # Create Graphhopper based on created files. # TODO Change YML file.
+    # Change configuration yaml file
+    config_src = os.path.join(DROOT, '2-gh', 'config-duttv2.src.yml')
+    config_out = os.path.join(DROOT, '2-gh', 'config-duttv2.yml')
+    with open(config_src, 'r') as f:
+        config = yaml.safe_load(f)
+    config['graphhopper']['datareader.file'] = osm_out
+    config['graphhopper']['gtfs.file'] = feed_paths
+    with open(config_out, 'w',) as f:
+        yaml.dump(config, f, sort_keys=False)
+    
+    # Create Graphhopper based on created files.
     dclient = docker.from_env()
     os.system('docker run -p 8989:8989 -d -v ${PWD}/1-data:/1-data --entrypoint /bin/bash israelhikingmap/graphhopper -c "java -Xmx10g -Xms10g -jar /graphhopper/*.jar server /1-data/2-gh/config-duttv2.yml"')
     
@@ -66,8 +78,10 @@ for pid, city in cities.iterrows():
             response = requests.get("http://localhost:8989/health")
             if response.status_code == 200:
                 online = True
-        except ConnectionRefusedError:
-            time.sleep(10)
+        except:
+            logging.info("Docker is not online just yet, waiting 30 seconds more.")
+            pass
+            time.sleep(30)
 
     # Start querying Grasshopper. 
     origins  = enumerate(gdf.centroid.to_crs("EPSG:4326"))

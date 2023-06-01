@@ -78,11 +78,13 @@ class Downloader:
                 f.write(response.content)
         
         # Trim GTFS size to bounding box
+        feed_out_list = []
         for feed_id in feed_ids:
 
             # Declare the directory path for the GTFS zip file
             gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
             gtfs_out = os.path.join(target_dir, 'out', f'{city_id}-{feed_id}.gtfs.zip')
+            feed_out_list.append(gtfs_out)
             if os.path.exists(gtfs_out):
                 logging.info(f"Already extracted: {feed_id}")
                 continue
@@ -92,6 +94,8 @@ class Downloader:
             feed = gk.read_feed(gtfs_in, dist_units='km')
             newfeed = feed.restrict_to_area(self.bbox_gdf)
             newfeed.write(gtfs_out)
+        
+        return feed_out_list
 
 # Test        
 if __name__ == "__main__":
