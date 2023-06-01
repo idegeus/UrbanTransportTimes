@@ -270,7 +270,6 @@ def test():
     file = f'{city.ID_HDC_G0}.pcl'
     df = pd.read_pickle(os.path.join(DROOT, '3-interim', 'populationmasks', file))
     gdf = gpd.GeoDataFrame(df)
-    gdf = gdf.iloc[200:]
     
     # Set queries and
     origins  = enumerate(gdf.centroid.to_crs("EPSG:4326"))
@@ -287,8 +286,6 @@ def test():
     
     batch      = list(itertools.product(origins, times, modes_dt))
     isochrones = client.get_isochrones(city.ID_HDC_G0, batch)
-    print(isochrones)
 
 if __name__ == "__main__":
     test()
-    
