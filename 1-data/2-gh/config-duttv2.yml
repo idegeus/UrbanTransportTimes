@@ -1,13 +1,13 @@
 graphhopper:
-  datareader.file: ./1-data/2-gh/osm/out/{city.ID_HDC_G0}.osm.pbf
-  graph.location: /1-data/2-gh/graph-cache
+  datareader.file: ./1-data/2-gh/osm/out/2167.osm.pbf
+  graph.location: ./1-data/2-gh/graph-cache
   gtfs.file:
   - ./1-data/2-gh/gtfs/out/2167-f-germany~long~distance~rail.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-germany~urban~transport.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-germany~regional~rail.gtfs.zip
   - ./1-data/2-gh/gtfs/out/2167-f-u0-ouibus.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-u0-switzerland.gtfs.zip
   - ./1-data/2-gh/gtfs/out/2167-f-u-nl.gtfs.zip
+  - ./1-data/2-gh/gtfs/out/2167-f-u0-switzerland.gtfs.zip
+  - ./1-data/2-gh/gtfs/out/2167-f-germany~regional~rail.gtfs.zip
+  - ./1-data/2-gh/gtfs/out/2167-f-u-flixbus.gtfs.zip
   profiles:
   - name: car
     vehicle: car
