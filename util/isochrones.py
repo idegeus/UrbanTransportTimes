@@ -42,10 +42,12 @@ class Isochrones:
         
         with self.con:
             qry = f"SELECT uid, geometry FROM isochrone WHERE uid LIKE '{ID_HDC_G0}%'; "
-            result = uids.merge(pd.read_sql_query(qry, self.con), how='left', on='uid')
-            result.geometry = result.geometry.apply(lambda x: wkt.loads(x) if isinstance(x, str) else None)
-            result = gpd.GeoDataFrame(result, crs="EPSG:4326")
-        return result
+            cached = pd.read_sql_query(qry, self.con)
+            
+        cached['geometry'] = cached['geometry'].apply(lambda x: wkt.loads(x) if isinstance(x, str) else None)
+        cached = cached.rename(columns={'geometry': 'isochrone'})
+        cached = gpd.GeoDataFrame(cached, crs='EPSG:4326', geometry='isochrone')
+        return uids.merge(cached, how='left', on='uid').set_geometry('isochrone')
             
     def _save_cache(self, uid, tt_mnts, dep_dt, mode, polygon):
         """Saves cache with multipolygon in a SQLite database."""
@@ -183,18 +185,23 @@ class Isochrones:
             # Execute query.
             logging.debug(f'Requesting {item.uid}')
             self.response = response_json = requests.get(endpoint, params=params).json()
-            if 'polygons' not in response_json:
-                raise sl.OperationalError(self.response)
-                
-            # Parse as geometry
-            result = gpd.GeoDataFrame.from_features(response_json['polygons'], crs="EPSG:4326")
-            area = result.to_crs(result.estimate_utm_crs()).area[0]
-            logging.info(f"Fetched {item.uid} with area={area:.1f}m2.")
-            if area < 100:
-                logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
+            
+            # If polygons are in the response, calculate area and give some suggestion. 
+            if 'polygons' in response_json:
+                result = gpd.GeoDataFrame.from_features(response_json['polygons'], crs="EPSG:4326")
+                geometry = result.geometry
+                area = result.to_crs(result.estimate_utm_crs()).area[0]
+                logging.info(f"Fetched {item.uid} with area={area:.1f}m2.")
+                if area < 100:
+                    logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
+            
+            # If not in the response, give a warning and continue with an empty polygon. 
+            else:
+                logging.warning(self.response)
+                geometry = gpd.GeoSeries([Polygon()])
                 
             # Save cache
-            self._save_cache(item.uid, item.tt_mnts, item.dep_dt.to_pydatetime(), item['mode'], result.geometry)
+            self._save_cache(item.uid, item.tt_mnts, item.dep_dt.to_pydatetime(), item['mode'], geometry)
 
     def get_isochrones(self, city_id, batch, source='graphhopper'):
         """
@@ -238,8 +245,8 @@ class Isochrones:
         
         # Check cache
         fetched = self._check_caches(city_id, batch)
-        to_fetch = batch[fetched.geometry.isna()]
-        logging.info(f"Out of total {len(batch)}, {100-len(to_fetch)/len(batch)*100:.2f}% cached.")
+        to_fetch = fetched[fetched.geometry.isna()]
+        logging.info(f"Out of total {len(fetched)}, {100-len(to_fetch)/len(fetched)*100:.2f}% cached.")
         
         # Fetch uncached isochrones
         if source == 'bing':
@@ -255,10 +262,10 @@ class Isochrones:
 def test():
     
     logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
-    DROOT = '../1-data'
+    DROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../1-data')
     
     BING_KEY = os.environ.get('BING_API_KEY')
-    CACHE = os.path.join(DROOT, '0-tmp', 'test.db')
+    CACHE = os.path.join(DROOT, '3-interim', 'graphhopper.db')
     client = Isochrones(graphhopper_url="http://localhost:8989", bing_key=BING_KEY, db=CACHE)
     
     # Read a test city to be processed.

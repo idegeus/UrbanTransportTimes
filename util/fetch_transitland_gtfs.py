@@ -5,7 +5,7 @@ import requests
 import gtfs_kit as gk
 import logging
 
-class Downloader:
+class GtfsDownloader:
     
     def __init__(self, tl_key):
         self.tl_key = tl_key
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     centroid = Point(4.804538, 52.785071)
     radius = 10000
     
-    gtfs_client = Downloader(tl_key=os.environ['TRANSITLAND_KEY'])
+    gtfs_client = GtfsDownloader(tl_key=os.environ['TRANSITLAND_KEY'])
     gtfs_client.set_bbox(bbox)
     gtfs_client.set_searchpoint(centroid, radius)
     

@@ -1,28 +1,16 @@
 graphhopper:
   datareader.file: ./1-data/2-gh/osm/out/2167.osm.pbf
   graph.location: ./1-data/2-gh/graph-cache
-  gtfs.file:
-  - ./1-data/2-gh/gtfs/out/2167-f-germany~long~distance~rail.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-u0-ouibus.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-u-nl.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-u0-switzerland.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-germany~regional~rail.gtfs.zip
-  - ./1-data/2-gh/gtfs/out/2167-f-u-flixbus.gtfs.zip
+  gtfs.file: ./1-data/2-gh/gtfs/out/2167-f-u-flixbus.gtfs.zip
   profiles:
-  - name: car
-    vehicle: car
-    weighting: fastest
-  - name: bike
-    vehicle: bike
-    weighting: fastest
-  - name: foot
-    vehicle: foot
-    weighting: fastest
+  - {name: car, vehicle: car, weighting: fastest}
+  - {name: bike, vehicle: bike, weighting: fastest}
+  - {name: foot, vehicle: foot, weighting: fastest}
   custom_models.directory: custom_models
   profiles_ch:
-  - profile: bike
-  - profile: foot
-  - profile: car
+  - {profile: bike}
+  - {profile: foot}
+  - {profile: car}
   profiles_lm: []
   graph.elevation.provider: srtm
   prepare.min_network_size: 200
@@ -32,34 +20,23 @@ graphhopper:
   graph.dataaccess.default_type: RAM_STORE
 server:
   application_connectors:
-  - type: http
-    port: 8989
-    max_request_header_size: 50k
+  - {type: http, port: 8989, max_request_header_size: 50k}
   request_log:
     appenders: []
   admin_connectors:
-  - type: http
-    port: 8990
-    bind_host: localhost
+  - {type: http, port: 8990, bind_host: localhost}
 logging:
   appenders:
-  - type: file
-    time_zone: UTC
-    current_log_filename: 1-data/2-gh/logs/graphhopper.log
-    log_format: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
-    archive: true
-    archived_log_filename_pattern: ./1-data/2-gh/logs/graphhopper-%d.log.gz
-    archived_file_count: 30
-    never_block: true
-  - type: console
-    time_zone: UTC
-    log_format: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
+  - {type: file, time_zone: UTC, current_log_filename: 1-data/2-gh/logs/graphhopper.log,
+    log_format: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n',
+    archive: true, archived_log_filename_pattern: ./1-data/2-gh/logs/graphhopper-%d.log.gz,
+    archived_file_count: 30, never_block: true}
+  - {type: console, time_zone: UTC, log_format: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread]
+      %-5level %logger{36} - %msg%n'}
   loggers:
     com.graphhopper.osm_warnings:
       level: DEBUG
       additive: false
       appenders:
-      - type: file
-        currentLogFilename: 1-data/2-gh/logs/osm_warnings.log
-        archive: false
-        logFormat: '[%level] %msg%n'
+      - {type: file, currentLogFilename: 1-data/2-gh/logs/osm_warnings.log, archive: false,
+        logFormat: '[%level] %msg%n'}
