@@ -51,7 +51,7 @@ for pid, city in cities.iterrows():
     gtfs_client.set_search(bbox.centroid, bbox, 10000)
     feed_ids = gtfs_client.search_feeds()
     gtfs_out_dir = os.path.join(DROOT, '2-gh', 'gtfs')
-    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.ID_HDC_G0)
+    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.ID_HDC_G0, merge=True)
     
     # Update configuration yaml file
     config_src = os.path.join(DROOT, '2-gh', 'config-duttv2.src.yml')
@@ -59,7 +59,7 @@ for pid, city in cities.iterrows():
     with open(config_src, 'r') as f:
         config = yaml.safe_load(f)
     config['graphhopper']['datareader.file'] = osm_out
-    config['graphhopper']['gtfs.file'] = ",".join(feed_paths[:1])
+    config['graphhopper']['gtfs.file'] = ",".join(feed_paths)
     with open(config_out, 'w',) as f:
         yaml.dump(config, f, sort_keys=False, default_flow_style=None)
     
