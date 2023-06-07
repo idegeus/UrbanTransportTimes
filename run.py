@@ -76,9 +76,10 @@ for pid, city in cities.iterrows():
     # Create Graphhopper based on created files.
     mem = os.environ.get('MEMORY', 8)
     dclient = docker.from_env()
-    for d in docker.containers.list():
+    for d in dclient.containers.list():
         d.stop()
         d.remove()
+    
     logging.info(f"Starting docker now with {mem}g memory...")
     graphhopper = dclient.containers.run(
         image="israelhikingmap/graphhopper", 
