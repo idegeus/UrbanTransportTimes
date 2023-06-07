@@ -114,7 +114,9 @@ class GtfsDownloader:
             newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230613'])
             
             # Check for validity, and if good, write out. TODO: Repair feeds if possible.
-            if feed.assess_quality().iloc[14].value != 'bad feed':
+            if feed.assess_quality().iloc[14].value == 'bad feed':
+                logging.warning(f'Not adding {feed_id}, bad feed, please repair. Continuing without...')
+            else:
                 feed_out_list.append(gtfs_out)
                 feeds.append(newfeed)
                 newfeed.write(gtfs_out)

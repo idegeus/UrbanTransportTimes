@@ -2,17 +2,26 @@ import os
 from shapely.geometry import Point, Polygon
 import pandas as pd
 import gtfs_kit as gk
+import numpy as np
 import logging
 logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
 from glob import glob
 
-feed_paths = glob('../1-data/2-gh/gtfs/out2/2167-f-*.zip')
+feed_paths = glob('../1-data/2-gh/gtfs/out/2167-f-*.zip')
 
-logging.info('Starting loading of data')
-feeds = [gk.read_feed(f, dist_units='km') for f in feed_paths]
+logging.info(f'Starting loading of {len(feed_paths)} feeds.')
+feeds = np.array([gk.read_feed(f, dist_units='km') for f in feed_paths], gk.Feed)
+
+valid = [isinstance(f.routes, pd.DataFrame) for f in feeds]
+logging.info(f'Out of all feeds, {len(valid)} are not empty routes.')
+
+goodquality = [f.assess_quality().iloc[14].value != 'bad feed' for f in feeds]
+logging.info(f'Out of all remaining feeds, {len(goodquality)} are of good quality. Continuing...')
+
 main_feed = feeds[0]
 
-logging.info(f'Starting merger with {len(feed_paths)} feeds...')
+
+logging.info(f'Starting merger with {len(feeds)} feeds...')
 main_feed.agency             = pd.concat([f.agency           for f in feeds if isinstance(f.agency,          pd.DataFrame)])
 main_feed.stops              = pd.concat([f.stops            for f in feeds if isinstance(f.stops,           pd.DataFrame)])
 main_feed.routes             = pd.concat([f.routes           for f in feeds if isinstance(f.routes,          pd.DataFrame)])
@@ -21,7 +30,7 @@ main_feed.stop_times         = pd.concat([f.stop_times       for f in feeds if i
 # main_feed.calendar           = pd.concat([f.calendar         for f in feeds if isinstance(f.calendar,        pd.DataFrame)])
 main_feed.calendar_dates     = pd.concat([f.calendar_dates   for f in feeds if isinstance(f.calendar_dates,  pd.DataFrame)])
 main_feed.shapes             = pd.concat([f.shapes           for f in feeds if isinstance(f.shapes,          pd.DataFrame)])
-main_feed.transfers          = pd.concat([f.transfers        for f in feeds if isinstance(f.transfers,       pd.DataFrame)])
+main_feed.transfers          = pd.DataFrame([]) # pd.concat([f.transfers        for f in feeds if isinstance(f.transfers,       pd.DataFrame)])
 
  # Replaced as some feeds don't have it, problem for GH.
 main_feed.feed_info          = pd.read_csv("../1-data/2-gh/gtfs/feed_info.template.csv")
