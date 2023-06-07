@@ -54,29 +54,32 @@ for pid, city in cities.iterrows():
     gtfs_out_dir = os.path.join(DROOT, '2-gh', 'gtfs')
     feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.ID_HDC_G0)
     
-    # Update configuration yaml file
+    # Check if cache should be removed
     config_src = os.path.join(DROOT, '2-gh', 'config-duttv2.src.yml')
     config_out = os.path.join(DROOT, '2-gh', 'config-duttv2.yml')
-    with open(config_src, 'r') as f:
-        config = yaml.safe_load(f)
-    existing_cache = config['graphhopper']['datareader.file'] == osm_out
-    config['graphhopper']['datareader.file'] = osm_out
-    config['graphhopper']['gtfs.file'] = ",".join(feed_paths)
-    with open(config_out, 'w',) as f:
-        yaml.dump(config, f, sort_keys=False, default_flow_style=None)
-    
-    # Clean cache if changing location
-    if existing_cache:
+    with open(config_out, 'r') as f:
+        config_old = yaml.safe_load(f)
+    if config_old['graphhopper']['datareader.file'] == osm_out:
         logging.info("Cache already exists, not rebuilding.")
     else:
         logging.info("OSM changed, cleaning cache.")
         shutil.rmtree("./1-data/2-gh/graph-cache", ignore_errors=True)
     
+    # Update configuration yaml file
+    with open(config_src, 'r') as f:
+        config = yaml.safe_load(f)
+    config['graphhopper']['datareader.file'] = osm_out
+    config['graphhopper']['gtfs.file'] = ",".join(feed_paths)
+    with open(config_out, 'w',) as f:
+        yaml.dump(config, f, sort_keys=False, default_flow_style=None)
+    
     # Create Graphhopper based on created files.
     mem = os.environ.get('MEMORY', 8)
-    logging.info(f"Starting docker now with {mem}g memory...")
-    
     dclient = docker.from_env()
+    for d in docker.containers.list():
+        d.stop()
+        d.remove()
+    logging.info(f"Starting docker now with {mem}g memory...")
     graphhopper = dclient.containers.run(
         image="israelhikingmap/graphhopper", 
         detach=True,
