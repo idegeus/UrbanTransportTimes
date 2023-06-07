@@ -150,6 +150,8 @@ class Isochrones:
         # Check if graphhopper url is actually set.
         assert len(self.graphhopper_url) > 0
         
+        logging.info('Starting fetching...')
+        
         for pid, item in to_fetch.iterrows():    
 
             # Get timezone estimation adoption so time is in local time, and format date string.

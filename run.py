@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import itertools
 import geopandas as gpd
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 import docker
 import yaml
