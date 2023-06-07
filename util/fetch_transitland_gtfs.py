@@ -93,7 +93,7 @@ class GtfsDownloader:
                 f.write(response.content)
         
         # Trim GTFS size to bounding box
-        feed_out_list = []
+        feed_list = []
         feeds = []
         for feed_id in feed_ids:
 
@@ -104,54 +104,24 @@ class GtfsDownloader:
             # Check if it already exists, if so, read in (if needed) and skip.
             if os.path.exists(gtfs_out) and not force_recreate:
                 logging.info(f"Already extracted: {feed_id}")
-                if merge:
-                    feeds.append(gk.read_feed(gtfs_out, dist_units='km'))
-                continue
-
-            # Read the feed with gtfs-kit, restrict to bounding box, and write out.
-            logging.info(f"Creating GTFS extract at {gtfs_out}")
-            feed = gk.read_feed(gtfs_in, dist_units='km')
-            newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230613'])
-            
+                feed = gk.read_feed(gtfs_out, dist_units='km')
+            else:
+                # Read the feed with gtfs-kit, restrict to bounding box, and write out.
+                logging.info(f"Creating GTFS extract at {gtfs_out}")
+                feed = gk.read_feed(gtfs_in, dist_units='km')
+                feed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230613'])
+                feed.write(gtfs_out)
+                
             # Check for validity, and if good, write out. TODO: Repair feeds if possible.
-            if feed.assess_quality().iloc[14].value == 'bad feed':
+            if (not isinstance(feed.routes, pd.DataFrame) 
+                or feed.stops.shape[0] == 0 
+                or feed.trips.shape[0] == 0 
+                or feed.assess_quality().iloc[14].value == 'bad feed'):
                 logging.warning(f'Not adding {feed_id}, bad feed, please repair. Continuing without...')
             else:
-                feed_out_list.append(gtfs_out)
-                feeds.append(newfeed)
-                newfeed.write(gtfs_out)
+                feeds.append(gtfs_out)
         
-        # Merge feeds into one zipfile.
-        if merge: 
-            gtfs_out_merged = os.path.join(target_dir, 'out', f'{city_id}-merged.gtfs.zip')
-            if os.path.exists(gtfs_out_merged) and not force_recreate:
-                logging.info(f"Already extracted merged file too.")
-                return [gtfs_out_merged]
-            
-            logging.info('Starting merger...')
-            main_feed = feeds[0]
-            main_feed.agency             = pd.concat([f.agency           for f in feeds if isinstance(f.agency,          pd.DataFrame)])
-            main_feed.stops              = pd.concat([f.stops            for f in feeds if isinstance(f.stops,           pd.DataFrame)])
-            main_feed.routes             = pd.concat([f.routes           for f in feeds if isinstance(f.routes,          pd.DataFrame)])
-            main_feed.trips              = pd.concat([f.trips            for f in feeds if isinstance(f.trips,           pd.DataFrame)])
-            main_feed.stop_times         = pd.concat([f.stop_times       for f in feeds if isinstance(f.stop_times,      pd.DataFrame)])
-            main_feed.calendar           = pd.concat([f.calendar         for f in feeds if isinstance(f.calendar,        pd.DataFrame)])
-            main_feed.calendar_dates     = pd.concat([f.calendar_dates   for f in feeds if isinstance(f.calendar_dates,  pd.DataFrame)])
-            main_feed.shapes             = pd.concat([f.shapes           for f in feeds if isinstance(f.shapes,          pd.DataFrame)])
-            main_feed.transfers          = pd.concat([f.transfers        for f in feeds if isinstance(f.transfers,       pd.DataFrame)])
-
-            # Replaced as some feeds don't have it, problem for GH.
-            main_feed.feed_info          = pd.read_csv(os.path.join(target_dir, 'feed_info.template.csv'))
-
-            # main_feed.attributions       = pd.concat([f.attributions     for f in feeds if isinstance(f.attributions,    pd.DataFrame)])
-            # main_feed.frequencies        = pd.concat([f.frequencies      for f in feeds if isinstance(f.frequencies,     pd.DataFrame)])
-            # main_feed.fare_attributes    = pd.concat([f.fare_attributes  for f in feeds if isinstance(f.fare_attributes, pd.DataFrame)])
-            # main_feed.fare_rules         = pd.concat([f.fare_rules       for f in feeds if isinstance(f.fare_rules,      pd.DataFrame)])
-            
-            main_feed.write(gtfs_out_merged)
-            return [gtfs_out_merged]
-        
-        return feed_out_list
+        return feeds
 
 # Test        
 if __name__ == "__main__":
@@ -171,4 +141,4 @@ if __name__ == "__main__":
     gtfs_client.set_search(centroid, bbox, radius)
     feed_ids = gtfs_client.search_feeds()
     logging.info(feed_ids)
-    gtfs_client.download_feeds(feed_ids, '../1-data/2-gh/gtfs/', 12345, merge=True)
+    gtfs_client.download_feeds(feed_ids, '../1-data/2-gh/gtfs/', 12345)
