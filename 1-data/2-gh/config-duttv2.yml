@@ -1,7 +1,7 @@
 graphhopper:
   datareader.file: ./1-data/2-gh/osm/out/2167.osm.pbf
   graph.location: ./1-data/2-gh/graph-cache
-  gtfs.file: ./1-data/2-gh/gtfs/out/2167-f-u-flixbus.gtfs.zip
+  gtfs.file: ./1-data/2-gh/gtfs/out/2167-merged.gtfs.zip
   profiles:
   - {name: car, vehicle: car, weighting: fastest}
   - {name: bike, vehicle: bike, weighting: fastest}

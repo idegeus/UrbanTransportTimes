@@ -51,7 +51,7 @@ for pid, city in cities.iterrows():
     gtfs_client.set_search(bbox.centroid, bbox, 10000)
     feed_ids = gtfs_client.search_feeds()
     gtfs_out_dir = os.path.join(DROOT, '2-gh', 'gtfs')
-    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.ID_HDC_G0, merge=True)
+    mergedfeed_path = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.ID_HDC_G0, merge=True)
     
     # Update configuration yaml file
     config_src = os.path.join(DROOT, '2-gh', 'config-duttv2.src.yml')
@@ -59,16 +59,17 @@ for pid, city in cities.iterrows():
     with open(config_src, 'r') as f:
         config = yaml.safe_load(f)
     config['graphhopper']['datareader.file'] = osm_out
-    config['graphhopper']['gtfs.file'] = ",".join(feed_paths)
+    config['graphhopper']['gtfs.file'] = ",".join(mergedfeed_path)
     with open(config_out, 'w',) as f:
         yaml.dump(config, f, sort_keys=False, default_flow_style=None)
     
     # Create Graphhopper based on created files.
+    logging.info("Starting docker now...")
     dclient = docker.from_env()
     graphhopper = dclient.containers.run(
         image="israelhikingmap/graphhopper", 
         detach=True,
-        command='"cd ../ && sleep 120 && java -Xmx8g -Xms8g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
+        command='"cd ../ && rm -rf ./1-data/2-gh/graph-cache && sleep 120 && java -Xmx8g -Xms8g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
         environment={"JAVA_OPTS": "-Xmx8g -Xms8g"},
         volumes={os.path.realpath(DROOT): {'bind': '/1-data', 'mode': 'rw'}}, 
         entrypoint='/bin/bash -c',
@@ -95,14 +96,15 @@ for pid, city in cities.iterrows():
         # ('driving', 'driving-peak', datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         # ('driving', 'driving-off',  datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 37)), 
-        ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)),
+        ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
         ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('cycling', 'cycling',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 37))
     ]
 
     batch      = list(itertools.product(origins, times, modes_dt))
-    isochrones = isochrone_client.get_isochrones(city.ID_HDC_G0, batch)
-        
-    graphhopper.stop()
-    graphhopper.remove()
+    try:
+        isochrones = isochrone_client.get_isochrones(city.ID_HDC_G0, batch)
+    except:
+        graphhopper.stop()
+        graphhopper.remove()
