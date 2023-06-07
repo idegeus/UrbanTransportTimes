@@ -23,9 +23,6 @@ load_dotenv()
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'), index_col=0)
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
-# TMP
-cities = cities[cities.City == 'Amsterdam']
-
 # Initialise Graphhopper client.
 CACHE = os.path.join(DROOT, '3-interim', 'graphhopper.db')
 isochrone_client   = Isochrones(graphhopper_url="http://localhost:8989", db=CACHE)
