@@ -100,7 +100,6 @@ class GtfsDownloader:
             # Declare the directory path for the GTFS zip file
             gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
             gtfs_out = os.path.join(target_dir, 'out', f'{city_id}-{feed_id}.gtfs.zip')
-            feed_out_list.append(gtfs_out)
             
             # Check if it already exists, if so, read in (if needed) and skip.
             if os.path.exists(gtfs_out) and not force_recreate:
@@ -113,8 +112,12 @@ class GtfsDownloader:
             logging.info(f"Creating GTFS extract at {gtfs_out}")
             feed = gk.read_feed(gtfs_in, dist_units='km')
             newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230613'])
-            feeds.append(newfeed)
-            newfeed.write(gtfs_out)
+            
+            # Check for validity, and if good, write out. TODO: Repair feeds if possible.
+            if feed.assess_quality().iloc[14].value != 'bad feed':
+                feed_out_list.append(gtfs_out)
+                feeds.append(newfeed)
+                newfeed.write(gtfs_out)
         
         # Merge feeds into one zipfile.
         if merge: 

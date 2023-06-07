@@ -96,8 +96,8 @@ for pid, city in cities.iterrows():
         # ('driving', 'driving-peak', datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         # ('driving', 'driving-off',  datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 37)), 
-        ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
-        ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
+        # ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
+        # ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('cycling', 'cycling',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 37))
     ]
