@@ -13,6 +13,7 @@ from util.extract_urbancenter import ExtractCenters
 from util.isochrones import Isochrones
 from util.fetch_transitland_gtfs import GtfsDownloader
 from util.extract_osm import extract_osm
+import shutil
 
 # Set logging and variables
 logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
@@ -22,6 +23,9 @@ load_dotenv()
 # Read a test city to be processed.
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'), index_col=0)
 logging.info(f"Total cities to be done: {cities.shape[0]}")
+
+# TMP
+cities = cities[cities.City == 'Vienna']
 
 # Initialise Graphhopper client.
 CACHE = os.path.join(DROOT, '3-interim', 'graphhopper.db')
@@ -55,20 +59,28 @@ for pid, city in cities.iterrows():
     config_out = os.path.join(DROOT, '2-gh', 'config-duttv2.yml')
     with open(config_src, 'r') as f:
         config = yaml.safe_load(f)
+    existing_cache = config['graphhopper']['datareader.file'] == osm_out
     config['graphhopper']['datareader.file'] = osm_out
     config['graphhopper']['gtfs.file'] = ",".join(feed_paths)
     with open(config_out, 'w',) as f:
         yaml.dump(config, f, sort_keys=False, default_flow_style=None)
     
+    # Clean cache if changing location
+    if existing_cache:
+        logging.info("Cache already exists, not rebuilding.")
+    else:
+        logging.info("OSM changed, cleaning cache.")
+        shutil.rmtree("./1-data/2-gh/graph-cache", ignore_errors=True)
+    
     # Create Graphhopper based on created files.
-    logging.info("Starting docker now...")
     mem = os.environ.get('MEMORY', 8)
+    logging.info(f"Starting docker now with {mem}g memory...")
     
     dclient = docker.from_env()
     graphhopper = dclient.containers.run(
         image="israelhikingmap/graphhopper", 
         detach=True,
-        command=f'"cd ../ && rm -rf ./1-data/2-gh/graph-cache && sleep 120 && java -Xmx{mem}g -Xms{mem}g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
+        command=f'"cd ../ && sleep 120 && java -Xmx{mem}g -Xms{mem}g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
         environment={"JAVA_OPTS": f"-Xmx{mem}g -Xms{mem}g"},
         volumes={os.path.realpath(DROOT): {'bind': '/1-data', 'mode': 'rw'}}, 
         entrypoint='/bin/bash -c',
@@ -95,8 +107,8 @@ for pid, city in cities.iterrows():
         # ('driving', 'driving-peak', datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         # ('driving', 'driving-off',  datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 37)), 
-        # ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
-        # ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
+        ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
+        ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('cycling', 'cycling',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 37))
     ]

@@ -1,7 +1,7 @@
 graphhopper:
-  datareader.file: ./1-data/2-gh/osm/out/2167.osm.pbf
+  datareader.file: ./1-data/2-gh/osm/out/3027.osm.pbf
   graph.location: ./1-data/2-gh/graph-cache
-  gtfs.file: ./1-data/2-gh/gtfs/out/2167-f-u-nl.gtfs.zip,./1-data/2-gh/gtfs/out/2167-f-u-flixbus.gtfs.zip
+  gtfs.file: ./1-data/2-gh/gtfs/out/3027-f-eo0-zssk.gtfs.zip,./1-data/2-gh/gtfs/out/3027-f-u2ed-wienerlinien~wlb.gtfs.zip,./1-data/2-gh/gtfs/out/3027-f-u-nl.gtfs.zip,./1-data/2-gh/gtfs/out/3027-f-u-flixbus.gtfs.zip
   profiles:
   - {name: car, vehicle: car, weighting: fastest}
   - {name: bike, vehicle: bike, weighting: fastest}

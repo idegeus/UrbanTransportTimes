@@ -190,10 +190,13 @@ class Isochrones:
             if 'polygons' in response_json:
                 result = gpd.GeoDataFrame.from_features(response_json['polygons'], crs="EPSG:4326")
                 geometry = result.geometry
-                area = result.to_crs(result.estimate_utm_crs()).area[0]
-                logging.info(f"Fetched {item.uid} with area={area:.1f}m2.")
-                if area < 100:
-                    logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
+                
+                if os.environ['ENVIRON'] == 'dev':
+                    area = result.to_crs(result.estimate_utm_crs()).area[0]
+                    if area < 100:
+                        logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
+                else:
+                    logging.info(f"Fetched {item.uid}.")
             
             # If not in the response, give a warning and continue with an empty polygon. 
             else:
