@@ -65,12 +65,14 @@ for pid, city in cities.iterrows():
     
     # Create Graphhopper based on created files.
     logging.info("Starting docker now...")
+    mem = os.environ.get('MEMORY', 8)
+    
     dclient = docker.from_env()
     graphhopper = dclient.containers.run(
         image="israelhikingmap/graphhopper", 
         detach=True,
-        command='"cd ../ && rm -rf ./1-data/2-gh/graph-cache && sleep 120 && java -Xmx8g -Xms8g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
-        environment={"JAVA_OPTS": "-Xmx8g -Xms8g"},
+        command=f'"cd ../ && rm -rf ./1-data/2-gh/graph-cache && sleep 120 && java -Xmx{mem}g -Xms{mem}g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
+        environment={"JAVA_OPTS": f"-Xmx{mem}g -Xms{mem}g"},
         volumes={os.path.realpath(DROOT): {'bind': '/1-data', 'mode': 'rw'}}, 
         entrypoint='/bin/bash -c',
         ports={'8989/tcp':'8989/tcp'}
