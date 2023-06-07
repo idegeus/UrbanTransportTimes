@@ -57,13 +57,14 @@ for pid, city in cities.iterrows():
     # Check if cache should be removed
     config_src = os.path.join(DROOT, '2-gh', 'config-duttv2.src.yml')
     config_out = os.path.join(DROOT, '2-gh', 'config-duttv2.yml')
-    with open(config_out, 'r') as f:
-        config_old = yaml.safe_load(f)
-    if config_old['graphhopper']['datareader.file'] == osm_out:
-        logging.info("Cache already exists, not rebuilding.")
-    else:
-        logging.info("OSM changed, cleaning cache.")
-        shutil.rmtree("./1-data/2-gh/graph-cache", ignore_errors=True)
+    if os.path.exists(config_out):
+        with open(config_out, 'r') as f:
+            config_old = yaml.safe_load(f)
+        if config_old['graphhopper']['datareader.file'] == osm_out:
+            logging.info("Cache already exists, not rebuilding.")
+        else:
+            logging.info("OSM changed, cleaning cache.")
+            shutil.rmtree("./1-data/2-gh/graph-cache", ignore_errors=True)
     
     # Update configuration yaml file
     with open(config_src, 'r') as f:
