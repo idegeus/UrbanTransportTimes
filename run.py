@@ -24,9 +24,6 @@ load_dotenv()
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'), index_col=0)
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
-# TMP
-cities = cities[cities.City == 'Vienna']
-
 # Initialise Graphhopper client.
 CACHE = os.path.join(DROOT, '3-interim', 'graphhopper.db')
 isochrone_client   = Isochrones(graphhopper_url="http://localhost:8989", db=CACHE)
@@ -107,15 +104,15 @@ for pid, city in cities.iterrows():
     
     # Start querying Grasshopper. 
     origins  = enumerate(gdf.centroid.to_crs("EPSG:4326"))
-    times    = [5, 15, 25, 35, 45]
+    times    = [5] #, 15, 25, 35, 45]
     modes_dt = [
         # ('driving', 'driving-peak', datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
         # ('driving', 'driving-off',  datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
-        ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 37)), 
-        ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
-        ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
+        # ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 37)), 
+        # ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)), 
+        # ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
         ('cycling', 'cycling',      datetime(2023, 6, 13, 13, 0, 37)), 
-        ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 37))
+        # ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 37))
     ]
 
     batch      = list(itertools.product(origins, times, modes_dt))

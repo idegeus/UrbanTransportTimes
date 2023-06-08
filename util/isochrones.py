@@ -206,7 +206,7 @@ class Isochrones:
             # Save cache
             self._save_cache(item.uid, item.tt_mnts, item.dep_dt.to_pydatetime(), item['mode'], geometry)
 
-    def get_isochrones(self, city_id, batch, source='graphhopper'):
+    def get_isochrones(self, city_id, batch, source='graphhopper', fetch=True):
         """
         Gets isochrones for specific points. 
         :ID_HDC_G0       City ID to be searched.
@@ -252,10 +252,12 @@ class Isochrones:
         logging.info(f"Out of total {len(fetched)}, {100-len(to_fetch)/len(fetched)*100:.2f}% cached.")
         
         # Fetch uncached isochrones
-        if source == 'bing':
+        if source == 'bing' and fetch:
             self._get_isochrones_bing(to_fetch)
-        if source == 'graphhopper':
+        if source == 'graphhopper' and fetch:
             self._get_isochrones_graphhopper(to_fetch)
+        if not fetch and to_fetch.shape[0] == 0:
+            logging.info("Not fetching unavailable geometry due to flag.")
         
         # To guarantee safety, we only pull out our queries from the (now filled) database.
         result = self._check_caches(city_id, batch)
