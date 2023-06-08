@@ -150,10 +150,9 @@ class Isochrones:
         # Check if graphhopper url is actually set.
         assert len(self.graphhopper_url) > 0
         
-        logging.info('Starting fetching...')
-        
         for pid, item in to_fetch.iterrows():    
 
+            logging.info(f'Converting to Timezone')
             # Get timezone estimation adoption so time is in local time, and format date string.
             dep_dt_str = item.dep_dt.astimezone(pytz.utc).isoformat().replace("+00:00", 'Z')
             
@@ -166,6 +165,7 @@ class Isochrones:
             }
 
             # Set required parameters.
+            logging.info(f'Setting parameters')
             endpoint = f'{self.graphhopper_url}/isochrone'
             params = {
                 'point': f"{item.startpt.y},{item.startpt.x}", # LatLng
@@ -174,6 +174,7 @@ class Isochrones:
             }
                 
             # Extra parameters are necessary if it is a public transport query.
+            logging.info(f'Setting transit parameters if necessary')
             if item['mode'] == 'transit':
                 params = params | {
                     "pt.access_profile": "foot",
@@ -185,15 +186,17 @@ class Isochrones:
                 }
         
             # Execute query.
-            logging.debug(f'Requesting {item.uid}')
+            logging.info(f'Requesting {item.uid}')
             self.response = response_json = requests.get(endpoint, params=params).json()
+            logging.info(f"Got the request!")
             
             # If polygons are in the response, calculate area and give some suggestion. 
             if 'polygons' in response_json:
+                logging.info(f'Polygons are in response!')
                 result = gpd.GeoDataFrame.from_features(response_json['polygons'], crs="EPSG:4326")
                 geometry = result.geometry
                 
-                if os.environ['ENVIRON'] == 'dev':
+                if os.environ.get('ENVIRON', '') == 'dev':
                     area = result.to_crs(result.estimate_utm_crs()).area[0]
                     if area < 100:
                         logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
@@ -202,10 +205,12 @@ class Isochrones:
             
             # If not in the response, give a warning and continue with an empty polygon. 
             else:
+                logging.info(f'Polygons are not in response!')
                 logging.warning(self.response)
                 geometry = gpd.GeoSeries([Polygon()])
                 
             # Save cache
+            logging.info(f'Saving cache...')
             self._save_cache(item.uid, item.tt_mnts, item.dep_dt.to_pydatetime(), item['mode'], geometry)
 
     def get_isochrones(self, city_id, batch, source='graphhopper'):
