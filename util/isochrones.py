@@ -1,4 +1,5 @@
 import os
+import time
 import pytz
 import requests
 import logging
@@ -11,6 +12,7 @@ from shapely import wkt
 from datetime import datetime
 from timezonefinder import TimezoneFinder
 from tqdm import tqdm
+from dotenv import load_dotenv
 
 class Isochrones:
     """Facilitates interaction with Isochrones and caches results."""
@@ -25,42 +27,68 @@ class Isochrones:
         with self.con:
             self.con.execute("""
                 CREATE TABLE IF NOT EXISTS isochrone (
-                    id       INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                    uid      TEXT NOT NULL UNIQUE,
-                    tt_mnts  INTEGER NOT NULL,
-                    dep_dt   TIMESTAMP NOT NULL,
-                    mode     TEXT NOT NULL,
-                    geometry BLOB NOT NULL
+                    uid        TEXT NOT NULL PRIMARY KEY,
+                    city_id    TEXT NOT NULL,
+                    pid        INTEGER NOT NULL,
+                    pt_lat     REAL NOT NULL,
+                    pt_lon     REAL NOT NULL,
+                    
+                    tt_mnts    INTEGER NOT NULL,
+                    dep_dt     TIMESTAMP NOT NULL,
+                    mode       TEXT NOT NULL,
+                    source     TEXT NOT NULL,
+                    
+                    geometry   BLOB NOT NULL
                 );
             """)
         logging.debug(f'Started new Isochrones object...')
         
-    def _check_caches(self, ID_HDC_G0, uids):
+    def _check_caches(self, city_id, batch):
         """Reads cache with polygons in a SQLite database."""
         
-        assert isinstance(uids, pd.DataFrame)
-        uids = uids.set_index('uid')
+        assert isinstance(batch, pd.DataFrame)
+        batch = batch.set_index('uid')
         
+        logging.debug("Finding isochrones from cache..")
         with self.con:
-            qry = f"SELECT uid, geometry FROM isochrone WHERE uid LIKE '{ID_HDC_G0}%'; "
+            qry = f"SELECT uid, geometry FROM isochrone WHERE city_id='{city_id}'"
             cached = pd.read_sql_query(qry, self.con)
             
+        logging.debug("Loading in geometry..")
         cached['geometry'] = cached['geometry'].apply(lambda x: wkt.loads(x) if isinstance(x, str) else None)
         cached = cached.rename(columns={'geometry': 'isochrone'})
         cached = gpd.GeoDataFrame(cached, crs='EPSG:4326', geometry='isochrone')
-        return uids.merge(cached, how='left', on='uid').set_geometry('isochrone')
-            
-    def _save_cache(self, uid, tt_mnts, dep_dt, mode, polygon):
+        
+        result = batch.merge(cached, how='left', on='uid')
+        result = result.set_geometry('isochrone')
+        
+        return result
+    
+    def _save_cache(self, item, polygon):
         """Saves cache with multipolygon in a SQLite database."""
+        polygon = gpd.GeoSeries([polygon], crs='EPSG:4326')
+        if polygon.iloc[0].area > 0.0001:
+            polygon = polygon.to_crs(polygon.estimate_utm_crs()).simplify(100).to_crs('EPSG:4326')
+        polygon = polygon.iloc[0].wkt
         try:
             with self.con:
                 sql = """
-                    INSERT INTO isochrone (uid, tt_mnts, dep_dt, mode, geometry) 
-                    values(?, ?, ?, ?, ?)
+                    INSERT INTO isochrone (uid, city_id, pid, pt_lat, pt_lon, tt_mnts, dep_dt, mode, source, geometry)
+                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
-                result = self.con.execute(sql, (uid, tt_mnts, dep_dt, mode, polygon.iloc[0].wkt))
+                result = self.con.execute(sql, (
+                    item.uid, 
+                    item.city_id,
+                    item.pid,
+                    item.startpt.y,
+                    item.startpt.x,
+                    item.tt_mnts, 
+                    item.dep_dt.to_pydatetime(), 
+                    item['mode'],
+                    item.source,
+                    polygon))
         except sl.IntegrityError:
-            raise sl.IntegrityError(f"Please make sure the UID is unique, '{uid}' is not.")
+            raise sl.IntegrityError(f"Constraint failed, check above with UID '{item.uid}'")
         
         return result
     
@@ -83,21 +111,22 @@ class Isochrones:
         return Point( (coords['longitude'], coords['latitude']) )
 
     def _get_isochrones_bing(self, to_fetch):
-        
         assert len(self.bing_key) > 0
             
         # Fetch in groups, first requesting it and then asking asynchronously for it.
-        groupsize = 100
-        for x in range(0, len(to_fetch), groupsize):
+        groupsize = 50
+        iterator = tqdm(range(0, len(to_fetch), groupsize), total=len(to_fetch)//50)
+        for x in iterator:
             
             # Send async start request.
             callbacks = {}
             for i, item in to_fetch.iloc[x:x+groupsize].iterrows():
             
-                logging.info(f'Requesting {item.uid}')
+                logging.debug(           f'Requesting {item.uid}')
+                iterator.set_description(f'Requesting {item.uid}')
                 
                 # Optimise for best result at departure time. This was done wrongly initially, so now fixed.
-                optimise = 'time'  # 'timeWithTraffic' if 'driving' in item['mode'] else 'time'
+                optimise = 'timeWithTraffic' if 'driving' in item['mode'] else 'time'
 
                 # Format date string.
                 dep_dt_str = item.dep_dt.strftime("%d/%m/%Y %H:%M:%S")
@@ -115,7 +144,6 @@ class Isochrones:
                 }
                 endpoint = 'https://dev.virtualearth.net/REST/v1/Routes/IsochronesAsync'
                 response_json = requests.get(endpoint, params=params).json()
-                self.response = response_json
                 if len(response_json['resourceSets']) == 1:
                     callbacks[item.uid] = response_json['resourceSets'][0]['resources'][0]['callbackUrl']
                 else:
@@ -124,11 +152,11 @@ class Isochrones:
             # We assume that sending these requests took longer than 4 seconds..
             for i, item in to_fetch.iloc[x:x+groupsize].iterrows(): 
                 
-                #iterator.set_description(f'Fetching {item.uid}')
                 if not callbacks[item.uid]:
                     continue
                 
-                logging.info(f'Fetching {item.uid}')
+                logging.debug(           f'Fetching {item.uid}')
+                iterator.set_description(f'Fetching {item.uid}')
                 callback_json = requests.get(callbacks[item.uid]).json()
                 callback_result_url = callback_json['resourceSets'][0]['resources'][0]['resultUrl']
                 response_json = requests.get(callback_result_url).json()
@@ -142,12 +170,12 @@ class Isochrones:
                     for l1 in response_json['resourceSets'][0]['resources'][0]['polygons']:
                         for l2 in l1['coordinates']:
                             polygons.append(Polygon([[e[1], e[0]] for e in l2]))
-                result = gpd.GeoSeries(MultiPolygon(polygons)).set_crs("EPSG:4326")
+                result = MultiPolygon(polygons)
                 
-                self._save_cache(item.uid, item.tt_mnts, item.dep_dt.to_pydatetime(), item['mode'], result)
+                self._save_cache(item, result)
     
     def _get_isochrones_graphhopper(self, to_fetch):
-        
+
         # Check if graphhopper url is actually set.
         assert len(self.graphhopper_url) > 0
         
@@ -191,7 +219,8 @@ class Isochrones:
             # If polygons are in the response, calculate area and give some suggestion. 
             if 'polygons' in response_json:
                 result = gpd.GeoDataFrame.from_features(response_json['polygons'], crs="EPSG:4326")
-                geometry = result.geometry
+                assert len(result) == 1
+                geometry = result.iloc[0].geometry
                 
                 if os.environ.get('ENVIRON', '') == 'dev':
                     area = result.to_crs(result.estimate_utm_crs()).area[0]
@@ -201,44 +230,56 @@ class Isochrones:
             # If not in the response, give a warning and continue with an empty polygon. 
             else:
                 logging.warning(self.response)
-                geometry = gpd.GeoSeries([Polygon()])
+                geometry = Polygon()
                 
             # Save cache
-            self._save_cache(item.uid, item.tt_mnts, item.dep_dt.to_pydatetime(), item['mode'], geometry)
+            self._save_cache(item, geometry)
 
-    def get_isochrones(self, city_id, batch, source='graphhopper', fetch=True):
+    def get_isochrones(self, city_id, points, tt_mnts, config, fetch=True):        
         """
         Gets isochrones for specific points. 
-        :ID_HDC_G0       City ID to be searched.
-        :batch           Iter with each [(starpt, uid, tt_mnts, (mode, dep_dt))]
-        :source          Data source (defaults to GraphHopper, but can be configured to be Bing Maps)
         
-        :return          Reachable areas in row in format MultiPolygon.
+        Args:
+        city_id (str):      City ID to store requests under.
+        points (list):      Iterable of tuples with an id and a Shapely origin point.
+        tt_mnts (list):     List of minutes of which to fetch config setups.
+        config (list):      Iter with configurations to get for each point
+        fetch (bool):       Fetch new items, or only return cache. Defaults to True.
         
-        Param batch is subject to the following:
-        :param starpt    A Shapely point which is the origin.
-        :param uid       Unique location ID for saving in the caching database.
-        :param tt_mnts   Maximum travel time
-        :param mode      Travel mode in [driving, walking, cycling, transit]
-        :param dep_dt    Departure datetime object.
+        Returns:
+        result (gdf):       Reachable areas in GeoDataFrame with previous options, MultiPolygon.
+        
+        Param config is subject to the following:
+        :param (
+            mode            Travel mode in [driving, walking, cycling, transit]
+            modetime        Travel mode identification in [driving, walking, cycling, transit]
+            dep_dt          Departure datetime object.
+            source          Either Bing or Graphhopper
+        )
         """
-            
+        
         # Input checks
-        for (pid, startpt), tt_mnts, (mode, modetime, dep_dt) in batch:
+        batch = list(itertools.product(points, tt_mnts, config))
+        for (pid, startpt), tt_mnts, (mode, modetime, dep_dt, source) in batch:
             assert isinstance(startpt, Point)
-            assert isinstance(dep_dt, datetime)
+            assert isinstance(startpt, Point)
+            assert isinstance(dep_dt, datetime) or dep_dt == None
             assert isinstance(tt_mnts, int)
             assert tt_mnts >= 5
             assert tt_mnts <= 60
             assert mode in ['driving', 'walking', 'cycling', 'transit']
+            assert source in ['g', 'b', 'h'] # GraphHopper, Bing, Here
             assert isinstance(tt_mnts, int)
         
         # Generate combinations with ((pid,point), (mode/modetime/date), minutes, uid).
-        batch = [(pid, startpt, tt_mnts, mode, modetime, dep_dt)
-                 for (pid, startpt), tt_mnts, (mode, modetime, dep_dt) in list(batch)]
-        batch = gpd.GeoDataFrame(batch, columns=['pid', 'startpt', 'tt_mnts', 'mode', 'modetime', 'dep_dt'], 
-                                 geometry='startpt', crs='EPSG:4326')
-        batch['uid'] = batch.apply(lambda x: f"{city_id}-{x.pid}-{x.modetime}-{x.tt_mnts}m-v0", axis=1)
+        batch = [(pid, startpt, tt_mnts, mode, modetime, dep_dt, source)
+                 for (pid, startpt), tt_mnts, (mode, modetime, dep_dt, source) in batch]
+        batch = gpd.GeoDataFrame(list(batch), 
+                                 columns=['pid', 'startpt', 'tt_mnts', 'mode', 'modetime', 'dep_dt', 'source'], 
+                                 geometry='startpt', 
+                                 crs='EPSG:4326')
+        batch['city_id'] = city_id
+        batch['uid'] = batch.apply(lambda x: f"{x.city_id}-{x.pid}-{x.modetime}-{x.tt_mnts}m-{x.source}", axis=1)
         
         # Localised batch to timezone-aware.
         center = batch.unary_union.centroid
@@ -247,17 +288,21 @@ class Isochrones:
         logging.info(f"Converted batch to timezone {tz}.")
         
         # Check cache
-        fetched = self._check_caches(city_id, batch)
-        to_fetch = fetched[fetched.geometry.isna()]
-        logging.info(f"Out of total {len(fetched)}, {100-len(to_fetch)/len(fetched)*100:.2f}% cached.")
+        batch_cached = self._check_caches(city_id, batch)
+        to_fetch = batch_cached[(batch_cached.geometry.isna()) & (~batch_cached.geometry.is_empty)]
+        logging.info(f"Out of total {len(batch)}, {100-len(to_fetch)/len(batch)*100:.1f}% cached.")
         
+        # Return if not fetching
+        if not fetch:
+            if to_fetch.shape[0] > 0:
+                logging.info("Not fetching unavailable geometry due to flag.")
+            return batch_cached
+            
         # Fetch uncached isochrones
-        if source == 'bing' and fetch:
-            self._get_isochrones_bing(to_fetch)
-        if source == 'graphhopper' and fetch:
-            self._get_isochrones_graphhopper(to_fetch)
-        if not fetch and to_fetch.shape[0] == 0:
-            logging.info("Not fetching unavailable geometry due to flag.")
+        if len(to_fetch[to_fetch.source == 'b']) > 0:
+            self._get_isochrones_bing(to_fetch[to_fetch.source == 'b'])
+        if len(to_fetch[to_fetch.source == 'g']) > 0:
+            self._get_isochrones_graphhopper(to_fetch[to_fetch.source == 'g'])
         
         # To guarantee safety, we only pull out our queries from the (now filled) database.
         result = self._check_caches(city_id, batch)
@@ -267,36 +312,42 @@ class Isochrones:
 def test():
     
     logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
+    load_dotenv()
     DROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../1-data')
     
-    BING_KEY = os.environ.get('BING_API_KEY')
-    CACHE = os.path.join(DROOT, '3-interim', 'graphhopper.db')
-    client = Isochrones(graphhopper_url="http://localhost:8989", bing_key=BING_KEY, db=CACHE)
+    CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.test.db')
+    client = Isochrones(
+        graphhopper_url="http://localhost:8989", 
+        bing_key=os.environ['BING_API_KEY'],
+        db=CACHE)
     
     # Read a test city to be processed.
-    cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'), index_col=0)
+    cities = pd.read_excel(os.path.join(DROOT, '1-targets', 'cities.xlsx'), index_col=0)
     city = cities[cities.City == 'Amsterdam'].iloc[0]
     
     # Get pickle and load into GeoDataFrame.
     file = f'{city.ID_HDC_G0}.pcl'
-    df = pd.read_pickle(os.path.join(DROOT, '3-interim', 'populationmasks', file))
+    df = pd.read_pickle(os.path.join(DROOT, '2-popmasks', file))
     gdf = gpd.GeoDataFrame(df)
     
     # Set queries and
-    origins  = enumerate(gdf.centroid.to_crs("EPSG:4326"))
-    times    = [5] # [5, 15, 25, 35, 45]
-    modes_dt = [
-        # ('driving', 'driving-peak', datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
-        # ('driving', 'driving-off',  datetime(2023, 6, 13, 8, 30, 37)), # Graphhopper doesn't do traffic.
-        ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 37)), 
-        ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37)),
-        ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37)), 
-        ('cycling', 'cycling',      datetime(2023, 6, 13, 13, 0, 37)), 
-        ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 37))
+    config = [
+        ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 0),  'b'),
+        ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 0),  'g'),
+        # ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37), 'b'),
+        # ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37), 'b'), 
+        ('cycling', 'cycling',      datetime(2023, 6, 13, 8, 30, 0),  'g'), 
+        ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 0),  'g')
     ]
     
-    batch      = list(itertools.product(origins, times, modes_dt))
-    isochrones = client.get_isochrones(city.ID_HDC_G0, batch)
+        # ('driving', 'driving-off',  datetime(2023, 6, 13, 13, 30, 0), 'b'),
+    
+    isochrones = client.get_isochrones(
+        city_id=city.ID_HDC_G0, 
+        points=enumerate(gdf.centroid.to_crs("EPSG:4326")),
+        tt_mnts=[15], # [5, 15, 25, 35, 45],
+        config=config
+    )
 
 if __name__ == "__main__":
     test()

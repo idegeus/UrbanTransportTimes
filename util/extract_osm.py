@@ -47,10 +47,10 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
     
     # Test for Amsterdam
-    osm_src = '../1-data/2-gh/osm/europe-latest.osm.pbf'
-    osm_out = '../1-data/2-gh/osm/amsterdam-test.osm.pbf'
+    osm_src = '../1-data/2-osm/src/europe-latest.osm.pbf'
+    osm_out = '../1-data/2-osm/example/amsterdam.osm.pbf'
     
     bbox = [(4.62314, 52.51905), (5.15805, 52.16525)]
     bbox = Polygon([bbox[0], (bbox[0][0], bbox[1][1]), bbox[1], (bbox[1][0], bbox[0][1])])
     
-    extract_osm(osm_src, osm_out, bbox, buffer_m=1000, overwrite=True)
+    extract_osm(osm_src, osm_out, bbox, buffer_m=20e3, overwrite=True)
