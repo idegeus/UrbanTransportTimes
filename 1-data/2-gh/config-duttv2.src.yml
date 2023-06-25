@@ -1,13 +1,13 @@
 graphhopper:
 
   # OpenStreetMap input file PBF or XML, can be changed via command line -Ddw.graphhopper.datareader.file=some.pbf
-  datareader.file: "./1-data/2-gh/osm/amsterdam.osm.pbf"
+  datareader.file: "/1-data/2-osm/example/amsterdam.osm.pbf"
 
   # Local folder used by graphhopper to store its data
-  graph.location: "./1-data/2-gh/graph-cache"
+  graph.location: "/1-data/2-gh/graph-cache"
 
   # Add GTFS feeds to route generation. 
-  gtfs.file: "./1-data/2-gh/gtfs/gtfs-nl-amsterdam.zip"
+  # gtfs.file: 1-data/2-gtfs/example/2167-f-u-nl.gtfs.zip,1-data/2-gtfs/example/2167-f-u-flixbus.gtfs.zip
 
   ##### Routing Profiles ####
 
@@ -170,7 +170,7 @@ graphhopper:
 
   # You can define the maximum visited nodes when routing. This may result in not found connections if there is no
   # connection between two points within the given visited nodes. The default is Integer.MAX_VALUE. Useful for flexibility mode
-  # routing.max_visited_nodes: 1000000
+  routing.max_visited_nodes: 1000000
 
   # The maximum time in milliseconds after which a routing request will be aborted. This has some routing algorithm
   # specific caveats, but generally it should allow the prevention of long-running requests. The default is Long.MAX_VALUE
@@ -217,7 +217,7 @@ graphhopper:
 
   # GraphHopper applies country-specific routing rules during import (not enabled by default).
   # You need to redo the import for changes to take effect.
-  # country_rules.enabled: true
+  country_rules.enabled: true
 
 # Dropwizard server configuration
 server:
