@@ -26,13 +26,24 @@ class Graphhopper:
     config_src = {}
     config_original = {}
     container = None
+    calibrated = False
+    city = ''
     fetched_google = 0
+    lockfile_path = ''
     
-    def __init__(self, droot):
+    def __init__(self, droot, city):
         self.dclient = docker.from_env()
         self.droot = droot
-        self.config_src_path = os.path.join(self.droot, '2-gh', 'config-duttv2.src.yml')
-        self.config_out_path = os.path.join(self.droot, '2-gh', 'config-duttv2.yml')
+        self.city = str(city)
+        self.config_src_path   = os.path.join(self.droot, '2-gh', 'config-duttv2.src.yml')
+        self.config_out_path   = os.path.join(self.droot, '2-gh', 'config-duttv2.yml')
+        self.factor_cache_path = os.path.join(self.droot, '2-gh', 'factor-cache.json')
+        self.lockfile_path     = os.path.join(self.droot, '2-gh', 'lockfile.json')
+        
+        if os.path.exists(self.factor_cache_path):
+            self.factor_cache = json.load(open(self.factor_cache_path, 'r'))
+        else:
+            self.factor_cache = {}
         
         self.config_src = yaml.safe_load(open(self.config_src_path, 'r'))
         self.config     = yaml.safe_load(open(self.config_src_path, 'r'))
@@ -48,10 +59,15 @@ class Graphhopper:
         assert isinstance(gtfs_paths, (list, np.array, pd.Series))
         self.config['graphhopper']['gtfs.file'] = ",".join(gtfs_paths)
         self.set_config()
-        
+    
     def set_factors(self, profile, factors):
         assert profile in ['car_cbr_off', 'car_cbr_peak']
-        self.factors = factors
+        
+        # Save cached factors in cache path.
+        if self.city not in self.factor_cache:
+            self.factor_cache[self.city] = {}
+        self.factor_cache[self.city][profile] = factors
+        json.dump(self.factor_cache, open(self.factor_cache_path, 'w'))
         
         # Get index of customizable profile and set config to it.
         ctm = [i for i,c in enumerate(self.config['graphhopper']['profiles']) if c['name'] == profile][0]
@@ -67,7 +83,18 @@ class Graphhopper:
         }
         logging.info(f"Set factors for {profile} to {str(factors)}")
         self.set_config()
+    
+    def get_factors(self):
         
+        # Check for cached speed correction factors.
+        if (self.city in self.factor_cache
+            and 'car_cbr_off'  in self.factor_cache[self.city]
+            and 'car_cbr_peak' in self.factor_cache[self.city]):
+            logging.info("Set previously known correction factors.")
+            self.set_factors('car_cbr_off',  self.factor_cache[self.city]['car_cbr_off'])
+            self.set_factors('car_cbr_peak', self.factor_cache[self.city]['car_cbr_peak'])
+            self.calibrated = True
+    
     def set_config(self, config=None):
         if not config:
             config = self.config
@@ -78,7 +105,12 @@ class Graphhopper:
     
     def build(self, force=False, attempts=5):
         
-        if self.config == self.config_original:
+        # Check for cached speed correction factors.
+        if (not force):
+            self.get_factors()
+        
+        # Check if config is correct, and whether rebuilding is necessary.
+        if self.config == self.config_original and not os.path.exists(self.lockfile_path):
             logging.info("Cache already exists, not rebuilding.")
         else:
             if self.config == self.config_src:
@@ -88,11 +120,13 @@ class Graphhopper:
             else:
                 logging.info("GH config changed, cleaning cache.")
             shutil.rmtree(os.path.join(self.droot, "2-gh/graph-cache"), ignore_errors=True)
+            os.remove(self.lockfile_path)
         
-            # If config is the example configuration, just use the pre-compiled graph-cache to speed up startup.
-            if self.config == self.config_src:
-                shutil.copytree(os.path.join(self.droot, "2-gh/example/graph-cache"),
-                                os.path.join(self.droot, "2-gh/graph-cache"))
+            # If config is the example configuration, use the pre-compiled graph-cache to speed up startup.
+            example_path = os.path.join(self.droot, "2-gh/example/graph-cache")
+            build_path = os.path.join(self.droot, "2-gh/graph-cache")
+            if self.config == self.config_src and os.path.exists(example_path):
+                shutil.copytree(example_path, build_path)
         
         # Remove other dockers
         mem = os.environ.get('MEMORY', 8)
@@ -125,6 +159,7 @@ class Graphhopper:
                     logging.info(line)
                     if "org.eclipse.jetty.server.Server - Started" in line:
                         break
+                json.dump({}, open(self.lockfile_path, 'w'))
                 return
         
             except ConnectionError as error:
@@ -138,9 +173,12 @@ class Graphhopper:
     def stop(self):
         self.container.stop()
         self.container.remove()
+        os.remove(self.lockfile_path)
         return
     
     def route_gh(self, point1, point2, factors):
+
+        # TODO: During evaluation, routes should be the same as recommended by Google Maps, instead of being shifted to other routes.
 
         headers = {'Accept': 'application/json','Content-Type': 'application/json'}
         json_data = {
@@ -214,7 +252,7 @@ class Graphhopper:
         self.fetched_google += 1
         return response.json()
     
-    def get_comparison(self, points, factors, city, period, cache_dir=None):
+    def get_comparison(self, points, factors, period, cache_dir=None):
         
         if not cache_dir:
             cache_dir = os.path.join(self.droot, '2-gh/calibrate-cache/')
@@ -227,7 +265,7 @@ class Graphhopper:
         self.fetched_google = 0
         results = []
         for ((p1_pid, p1), (p2_pid, p2)) in sample_routes:
-            google_cache = os.path.join(cache_dir, f"{city}-{p1_pid}-{p2_pid}-google-{period}.json")
+            google_cache = os.path.join(cache_dir, f"{self.city}-{p1_pid}-{p2_pid}-google-{period}.json")
 
             if os.path.exists(google_cache):
                 response_google = json.load(open(google_cache, 'r'))
@@ -265,13 +303,18 @@ class Graphhopper:
         
         return results
     
-    def calibrate(self, points, city, start_factors = np.full(5, 0.75)):
+    def calibrate(self, points, start_factors = np.full(5, 0.8), force=False):
+        
+        if self.calibrated and not force:
+            logging.info('Already calibrated earlier based on cached factors, skipping. Add calibrate(force=True) to force.')
+            return
+        
         if len(points) > 20:
             logging.warning(f"With > 20 points, calibration is much slower while not much better. You gave {len(points)}.")
         
         period = ''
         def error_function(factors):
-            results = self.get_comparison(points, factors=factors, city=city, period=period)
+            results = self.get_comparison(points, factors=factors, period=period)
             return results.error_corrected.sum()
         bounds = [(0.6, 1.1)] * 5
         
@@ -316,7 +359,7 @@ def test():
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
     # Run default example build. 
-    graphhopper = Graphhopper(droot=DROOT)
+    graphhopper = Graphhopper(droot=DROOT, city=city.ID_HDC_G0)
     graphhopper.set_osm("/1-data/2-osm/example/amsterdam.osm.pbf")
     graphhopper.set_gtfs(["1-data/2-gtfs/example/2167-f-u-nl.gtfs.zip","1-data/2-gtfs/example/2167-f-u-flixbus.gtfs.zip"])
     graphhopper.build()
@@ -324,7 +367,7 @@ def test():
     # Try to calibrate example build.
     sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
     sample = sample.apply(lambda x: graphhopper.nearest(x))
-    graphhopper.calibrate(sample, city.ID_HDC_G0, start_factors=np.ones(5))
+    graphhopper.calibrate(sample)
 
     # === Here you run the actual fetching. 
 

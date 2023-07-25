@@ -310,7 +310,7 @@ def test():
     urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, "2-external"), target_dir=os.path.join(DROOT, "2-popmasks"), res=1000)
     
     CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.test.db')
-    client = Isochrones(
+    isochrone_client = Isochrones(
         graphhopper_url="http://localhost:8989", 
         bing_key=os.environ['BING_API_KEY'],
         db=CACHE)
@@ -322,7 +322,7 @@ def test():
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
     # Set queries and
-    config = [
+    isochrone_config = [
         # ('driving', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'b'),
         # ('transit', [15, 30], datetime(2023, 6, 13, 8, 30, 37), 'b'),
         # ('transit', [15, 30], datetime(2023, 6, 13, 13, 0, 37), 'b'), 
@@ -332,10 +332,10 @@ def test():
         ('walking', [15, 30], datetime(2023, 6, 13, 8, 30, 0),  'g')
     ]
     
-    isochrones = client.get_isochrones(
+    isochrones = isochrone_client.get_isochrones(
         city_id=city.ID_HDC_G0, 
         points=enumerate(gdf.centroid.to_crs("EPSG:4326")),
-        config=config
+        config=isochrone_config
     )
 
 if __name__ == "__main__":
