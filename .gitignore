@@ -10,6 +10,8 @@
 1-data/2-popmasks/
 1-data/2-gh/config-duttv2.yml
 1-data/2-gh/graph-cache/
+1-data/2-gh/calibrate-cache/
+1-data/2-gh/example/
 1-data/2-gh/logs/
 1-data/3-traveltime-cache/
 

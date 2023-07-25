@@ -1,5 +1,5 @@
 import os
-import time
+import sys
 import pytz
 import requests
 import logging
@@ -13,6 +13,9 @@ from datetime import datetime
 from timezonefinder import TimezoneFinder
 from tqdm import tqdm
 from dotenv import load_dotenv
+
+sys.path.append(os.path.realpath('../'))
+from util.extract_urbancenter import ExtractCenters
 
 class Isochrones:
     """Facilitates interaction with Isochrones and caches results."""
@@ -84,7 +87,7 @@ class Isochrones:
                     item.startpt.x,
                     item.tt_mnts, 
                     item.dep_dt.to_pydatetime(), 
-                    item['mode'],
+                    item['trmode'],
                     item.source,
                     polygon))
         except sl.IntegrityError:
@@ -92,23 +95,11 @@ class Isochrones:
         
         return result
     
-    def snap_coordinates(self, coordinate):
-        """
-        Some Centroids are not close to a road, and will return a bad result. 
-        This function snaps the coordinates to the nearest road.
-        """
-        url = "https://dev.virtualearth.net/REST/v1/Routes/SnapToRoad"
-        params = {
-            'points': f"{coordinate.y},{coordinate.x}",
-            'travelMode': 'driving',
-            'key': self.api_key
-        }
-        response = requests.get(url, params=params)
-        self.response = response
-        response_json = response.json()
-        
-        coords = response_json['resourceSets'][0]['resources']['snappedPoints'][0]['coordinate']
-        return Point( (coords['longitude'], coords['latitude']) )
+    def nearest(self, point):
+        url = f"{self.graphhopper_url}/nearest"
+        response = requests.request("GET", url, params={"point": f"{point.y},{point.x}"}).json()
+        coords = response['coordinates']
+        return Point(coords[0], coords[1])
 
     def _get_isochrones_bing(self, to_fetch):
         assert len(self.bing_key) > 0
@@ -126,7 +117,7 @@ class Isochrones:
                 iterator.set_description(f'Requesting {item.uid}')
                 
                 # Optimise for best result at departure time. This was done wrongly initially, so now fixed.
-                optimise = 'timeWithTraffic' if 'driving' in item['mode'] else 'time'
+                optimise = 'timeWithTraffic' if 'driving' in item['trmode'] else 'time'
 
                 # Format date string.
                 dep_dt_str = item.dep_dt.strftime("%d/%m/%Y %H:%M:%S")
@@ -139,7 +130,7 @@ class Isochrones:
                     'distanceUnit': 'kilometer',
                     'optimise': optimise,
                     'dateTime': dep_dt_str, # Example: 03/01/2011 05:42:00
-                    'travelMode': item['mode'],
+                    'travelMode': item['trmode'],
                     'key': self.bing_key
                 }
                 endpoint = 'https://dev.virtualearth.net/REST/v1/Routes/IsochronesAsync'
@@ -187,7 +178,8 @@ class Isochrones:
             
             # Translate standardised string to graphhopper version.
             gh_mode = {
-                "driving": 'car',
+                "driving_off": 'car_cbr_off',
+                "driving_peak": 'car_cbr_peak',
                 "walking": 'foot',
                 "cycling": 'bike',
                 'transit': 'pt'
@@ -198,11 +190,11 @@ class Isochrones:
             params = {
                 'point': f"{item.startpt.y},{item.startpt.x}", # LatLng
                 'time_limit': item.tt_mnts * 60,
-                'profile': gh_mode[item['mode']]
+                'profile': gh_mode[item['trmode']]
             }
                 
             # Extra parameters are necessary if it is a public transport query.
-            if item['mode'] == 'transit':
+            if item['trmode'] == 'transit':
                 params = params | {
                     "pt.access_profile": "foot",
                     "pt.profile": 'false',
@@ -235,85 +227,87 @@ class Isochrones:
             # Save cache
             self._save_cache(item, geometry)
 
-    def get_isochrones(self, city_id, points, tt_mnts, config, fetch=True):        
+    def get_isochrones(self, city_id, points, config, dry_run=False):
         """
         Gets isochrones for specific points. 
         
         Args:
         city_id (str):      City ID to store requests under.
         points (list):      Iterable of tuples with an id and a Shapely origin point.
-        tt_mnts (list):     List of minutes of which to fetch config setups.
-        config (list):      Iter with configurations to get for each point
-        fetch (bool):       Fetch new items, or only return cache. Defaults to True.
+        config (list):      Iter with configurations to get for each point.
+        dry_run (bool):     Fetch new items, or only return cache. Defaults to False.
         
         Returns:
         result (gdf):       Reachable areas in GeoDataFrame with previous options, MultiPolygon.
+        info_tuple (tuple): Info with respective batch size, rows cached and fraction completed
         
         Param config is subject to the following:
         :param (
-            mode            Travel mode in [driving, walking, cycling, transit]
-            modetime        Travel mode identification in [driving, walking, cycling, transit]
+            trmode          Travel mode in [driving, walking, cycling, transit]
+            tt_mnts         List of minutes of which to fetch config setups.
             dep_dt          Departure datetime object.
             source          Either Bing or Graphhopper
         )
         """
         
         # Input checks
-        batch = list(itertools.product(points, tt_mnts, config))
-        for (pid, startpt), tt_mnts, (mode, modetime, dep_dt, source) in batch:
-            assert isinstance(startpt, Point)
-            assert isinstance(startpt, Point)
-            assert isinstance(dep_dt, datetime) or dep_dt == None
-            assert isinstance(tt_mnts, int)
-            assert tt_mnts >= 5
-            assert tt_mnts <= 60
-            assert mode in ['driving', 'walking', 'cycling', 'transit']
-            assert source in ['g', 'b', 'h'] # GraphHopper, Bing, Here
-            assert isinstance(tt_mnts, int)
-        
-        # Generate combinations with ((pid,point), (mode/modetime/date), minutes, uid).
-        batch = [(pid, startpt, tt_mnts, mode, modetime, dep_dt, source)
-                 for (pid, startpt), tt_mnts, (mode, modetime, dep_dt, source) in batch]
-        batch = gpd.GeoDataFrame(list(batch), 
-                                 columns=['pid', 'startpt', 'tt_mnts', 'mode', 'modetime', 'dep_dt', 'source'], 
-                                 geometry='startpt', 
-                                 crs='EPSG:4326')
+        batch = []
+        for (pid, point) in points:
+            for trmode, tt_mnts_list, dep_dt, source in config:
+                for tt_mnts in tt_mnts_list:
+                    batch.append((pid, point, trmode, tt_mnts, dep_dt, source))
+        batch = gpd.GeoDataFrame(
+            batch, columns=['pid', 'startpt', 'trmode', 'tt_mnts', 'dep_dt', 'source'], 
+            geometry='startpt', crs='EPSG:4326')
+        batch['startpt'] = batch.startpt.apply(lambda x: self.nearest(x))
         batch['city_id'] = city_id
-        batch['uid'] = batch.apply(lambda x: f"{x.city_id}-{x.pid}-{x.modetime}-{x.tt_mnts}m-{x.source}", axis=1)
+        batch['uid'] = batch.apply(lambda x: f"{x.city_id}-{x.pid}-{x.trmode}-{x.tt_mnts}m-{x.source}", axis=1)
+        
+        # Type checking
+        assert batch.trmode.isin(['driving_off', 'driving_peak', 'transit_off', 'transit_peak', 'walking', 'cycling']).all()
+        assert batch.source.isin(['g', 'b', 'h']).all() # GraphHopper, Bing, Here
+        logging.info(batch.head(15))
         
         # Localised batch to timezone-aware.
         center = batch.unary_union.centroid
         tz = TimezoneFinder().timezone_at(lng=center.x, lat=center.y)
         batch.dep_dt = batch.dep_dt.dt.tz_localize(tz)
-        logging.info(f"Converted batch to timezone {tz}.")
+        logging.debug(f"Converted batch to timezone {tz}.")
         
         # Check cache
         batch_cached = self._check_caches(city_id, batch)
         to_fetch = batch_cached[(batch_cached.geometry.isna()) & (~batch_cached.geometry.is_empty)]
-        logging.info(f"Out of total {len(batch)}, {100-len(to_fetch)/len(batch)*100:.1f}% cached.")
+        frac_done = 1 - (len(to_fetch)/len(batch))
+        logging.info(f"Out of total {len(batch)}, {frac_done*100:.1f}% cached.")
         
-        # Return if not fetching
-        if not fetch:
-            if to_fetch.shape[0] > 0:
-                logging.info("Not fetching unavailable geometry due to flag.")
-            return batch_cached
+        # Return if a dry run.
+        if dry_run:
+            logging.info("Dry run: not fetching possible unavailable geometry due to flag.")
+            return batch_cached, (len(batch), len(batch)-len(to_fetch), frac_done)
             
         # Fetch uncached isochrones
-        if len(to_fetch[to_fetch.source == 'b']) > 0:
-            self._get_isochrones_bing(to_fetch[to_fetch.source == 'b'])
-        if len(to_fetch[to_fetch.source == 'g']) > 0:
-            self._get_isochrones_graphhopper(to_fetch[to_fetch.source == 'g'])
+        bing_fetch = to_fetch[to_fetch.source == 'b']
+        grph_fetch = to_fetch[to_fetch.source == 'g']
+        if len(bing_fetch) > 0:
+            self._get_isochrones_bing(bing_fetch)
+        if len(grph_fetch) > 0:
+            self._get_isochrones_graphhopper(grph_fetch)
         
         # To guarantee safety, we only pull out our queries from the (now filled) database.
         result = self._check_caches(city_id, batch)
         
-        return result
+        # Calculate again
+        to_fetch = batch_cached[(batch_cached.geometry.isna()) & (~batch_cached.geometry.is_empty)]
+        frac_done = 1 - (len(to_fetch)/len(batch))
+        
+        return result, (len(batch), len(batch)-len(to_fetch), frac_done)
 
 def test():
     
-    logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
     load_dotenv()
+    logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
     DROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../1-data')
+    urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, "2-external"), target_dir=os.path.join(DROOT, "2-popmasks"), res=1000)
     
     CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.test.db')
     client = Isochrones(
@@ -322,30 +316,25 @@ def test():
         db=CACHE)
     
     # Read a test city to be processed.
-    cities = pd.read_excel(os.path.join(DROOT, '1-targets', 'cities.xlsx'), index_col=0)
+    cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
     city = cities[cities.City == 'Amsterdam'].iloc[0]
-    
-    # Get pickle and load into GeoDataFrame.
-    file = f'{city.ID_HDC_G0}.pcl'
-    df = pd.read_pickle(os.path.join(DROOT, '2-popmasks', file))
-    gdf = gpd.GeoDataFrame(df)
+    pcl_path = urbancenter_client.extract_city(city.City, city.ID_HDC_G0)
+    gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
     # Set queries and
     config = [
-        ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 0),  'b'),
-        ('driving', 'driving',      datetime(2023, 6, 13, 8, 30, 0),  'g'),
-        # ('transit', 'transit-peak', datetime(2023, 6, 13, 8, 30, 37), 'b'),
-        # ('transit', 'transit',      datetime(2023, 6, 13, 13, 0, 37), 'b'), 
-        ('cycling', 'cycling',      datetime(2023, 6, 13, 8, 30, 0),  'g'), 
-        ('walking', 'walking',      datetime(2023, 6, 13, 8, 30, 0),  'g')
+        # ('driving', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'b'),
+        # ('transit', [15, 30], datetime(2023, 6, 13, 8, 30, 37), 'b'),
+        # ('transit', [15, 30], datetime(2023, 6, 13, 13, 0, 37), 'b'), 
+        ('driving_off', [10, 25], datetime(2023, 6, 13, 8, 30, 0), 'g'),
+        ('driving_peak', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'g'),
+        ('cycling', [15, 30], datetime(2023, 6, 13, 8, 30, 0),  'g'), 
+        ('walking', [15, 30], datetime(2023, 6, 13, 8, 30, 0),  'g')
     ]
-    
-        # ('driving', 'driving-off',  datetime(2023, 6, 13, 13, 30, 0), 'b'),
     
     isochrones = client.get_isochrones(
         city_id=city.ID_HDC_G0, 
         points=enumerate(gdf.centroid.to_crs("EPSG:4326")),
-        tt_mnts=[15], # [5, 15, 25, 35, 45],
         config=config
     )
 

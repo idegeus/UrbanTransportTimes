@@ -7,7 +7,7 @@ graphhopper:
   graph.location: "/1-data/2-gh/graph-cache"
 
   # Add GTFS feeds to route generation. 
-  # gtfs.file: 1-data/2-gtfs/example/2167-f-u-nl.gtfs.zip,1-data/2-gtfs/example/2167-f-u-flixbus.gtfs.zip
+  gtfs.file: 1-data/2-gtfs/example/2167-f-u-nl.gtfs.zip,1-data/2-gtfs/example/2167-f-u-flixbus.gtfs.zip
 
   ##### Routing Profiles ####
 
@@ -35,13 +35,51 @@ graphhopper:
   # profiles (see below). Or at least limit the number of `routing.max_visited_nodes`.
 
   profiles:
-    - name: car
+    - name: car_def # Default
       vehicle: car
       weighting: fastest
-      # custom_model:
-      #   distance_influence: 70
-#      turn_costs: true
-#      u_turn_costs: 60
+
+    - name: car_ctm # Customizable
+      vehicle: car
+      weighting: custom
+      turn_costs: true
+      u_turn_costs: 60
+      custom_model:
+        distance_influence: 70
+    
+    - name: car_cbr_off # Calibrated off-peak
+      vehicle: car
+      weighting: custom
+      turn_costs: true
+      u_turn_costs: 60
+      custom_model: {
+        "distance_influence": 15,
+        "speed": [
+          {"if": "road_environment == FERRY", "multiply_by": "1.0"},
+          {"if": "road_class==MOTORWAY", "multiply_by": "1.0"},
+          {"if": "road_class==PRIMARY", "multiply_by": "1.0"},
+          {"if": "road_class==SECONDARY", "multiply_by": "1.0"},
+          {"if": "road_class==TERTIARY", "multiply_by": "1.0"},
+          {"if": "road_class==RESIDENTIAL", "multiply_by": "1.0"}
+        ]
+      }
+
+    - name: car_cbr_peak # Calibrated on-peak
+      vehicle: car
+      weighting: custom
+      turn_costs: true
+      u_turn_costs: 60
+      custom_model: {
+        "distance_influence": 15,
+        "speed": [
+          {"if": "road_environment == FERRY", "multiply_by": "1.0"},
+          {"if": "road_class==MOTORWAY", "multiply_by": "1.0"},
+          {"if": "road_class==PRIMARY", "multiply_by": "1.0"},
+          {"if": "road_class==SECONDARY", "multiply_by": "1.0"},
+          {"if": "road_class==TERTIARY", "multiply_by": "1.0"},
+          {"if": "road_class==RESIDENTIAL", "multiply_by": "1.0"}
+        ]
+      }
 
     - name: bike
       # to use the bike vehicle make sure to not ignore cycleways etc., see import.osm.ignored_highways below
@@ -62,10 +100,10 @@ graphhopper:
   # list you can define for which of the above routing profiles such preparation shall be performed. Note that to support
   # profiles with `turn_costs: true` a more elaborate preparation is required (longer preparation time and more memory
   # usage) and the routing will also be slower than with `turn_costs: false`.
-  profiles_ch:
-    - profile: bike
-    - profile: foot
-    - profile: car
+  # profiles_ch:
+  #   - profile: bike
+  #   - profile: foot
+  #   - profile: car
 
   # Hybrid mode:
   # Similar to speed mode, the hybrid mode (Landmarks, LM) also speeds up routing by doing calculating auxiliary data

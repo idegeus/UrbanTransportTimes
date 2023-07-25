@@ -14,24 +14,28 @@ import logging
 
 class ExtractCenters:
     
-    def __init__(self, src_dir):
+    def __init__(self, src_dir, target_dir, res = 1000):
         self.src_dir = src_dir
+        self.target_dir = target_dir
+        self.res = res
         self.initialised = False
+        
+        assert self.res == 1000 or self.res == 100
         
     def _load_rasters(self):
         
         # Get population data for the whole world.
         pop_path = os.path.join(
             self.src_dir,
-            'GHS_POP_E2020_GLOBE_R2022A_54009_1000_V1_0',
-            'GHS_POP_E2020_GLOBE_R2022A_54009_1000_V1_0.tif')
+            f'GHS_POP_E2020_GLOBE_R2022A_54009_{self.res}_V1_0',
+            f'GHS_POP_E2020_GLOBE_R2022A_54009_{self.res}_V1_0.tif')
         urbancenter_path = os.path.join(
             self.src_dir, 
             'GHS_STAT_UCDB2015MT_GLOBE_R2019A',
             'GHS_STAT_UCDB2015MT_GLOBE_R2019A_V1_2.gpkg')
         
         if not os.path.exists(pop_path) or not os.path.exists(urbancenter_path):
-            logging.critical("Please download GHS-pop and UCDB (2020, resolution=1km) from https://ghsl.jrc.ec.europa.eu/download.php")
+            logging.critical(f"Please download GHS-pop and UCDB (2020, resolution={self.res}m) from https://ghsl.jrc.ec.europa.eu/download.php")
             raise FileExistsError()
         
         logging.info("Initialising population raster..")
@@ -74,33 +78,35 @@ class ExtractCenters:
         """Get the first polygon in a GeoDataFrame as GeoJSON."""
         return [json.loads(gdf.to_json())['features'][0]['geometry']]
         
-    def extract_city(self, city_name, ID_HDC_G0, target_dir):
+    def extract_city(self, city_name, ID_HDC_G0, buffer=0):
         """Creates GeoDataFrames and GeoTIFF extracts from Population Rasters. 
 
         Args:
             city_name (_type_): _description_
             ID_HDC_G0 (_type_): _description_
-            target_dir (_type_): _description_
+            buffer (integer): adds meters of buffer around zone.
         """
-            
+        
         # Paths
-        tiff_path = os.path.join(target_dir, f"{ID_HDC_G0}.tiff")
-        pcl_path  = os.path.join(target_dir, f"{ID_HDC_G0}.pcl")
+        tiff_path = os.path.join(self.target_dir, f"{ID_HDC_G0}.buf{buffer}.res{self.res}.tiff")
+        pcl_path  = os.path.join(self.target_dir, f"{ID_HDC_G0}.buf{buffer}.res{self.res}.pcl")
         
         # Log, and if city already done, skip this.
         if(os.path.exists(tiff_path) and os.path.exists(pcl_path)):
-            logging.info(f"Population raster extract already exists: {city_name} ({ID_HDC_G0})")
+            logging.debug(f"Population raster extract already exists: {city_name} ({ID_HDC_G0}.buf{buffer}.res{self.res})")
             return pcl_path
         else:
-            logging.info(f"Creating population extract for city: {city_name} ({ID_HDC_G0})")
+            logging.info(f"Creating population extract for city: {city_name} ({ID_HDC_G0}.buf{buffer}.res{self.res})")
         
         # Only initialise rasters if we know we have to do some work, e.g., now.
         if not self.initialised:
             self._load_rasters()
         
         # Write out a masked selection with city population.
+        center_gdf = self.urbancenter_gdf[self.urbancenter_gdf.ID_HDC_G0 == ID_HDC_G0]
+        center_gdf = center_gdf.to_crs(center_gdf.estimate_utm_crs()).buffer(buffer).to_crs(center_gdf.crs)
         self._mask_raster_to_tiff(
-            gdf_entry=self.urbancenter_gdf[self.urbancenter_gdf.ID_HDC_G0 == ID_HDC_G0],
+            gdf_entry=center_gdf,
             raster=self.pop,
             tiff_out=tiff_path
         )
@@ -140,11 +146,12 @@ if __name__ == "__main__":
     droot = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../1-data')
     
     city_list_df = pd.read_excel(os.path.join(droot, '1-research', 'cities.xlsx'))
-    urbancenter_client = ExtractCenters(src_dir=os.path.join(droot, '2-external'))
+    urbancenter_client = ExtractCenters(src_dir=os.path.join(droot, '2-external'), 
+                                        target_dir=os.path.join(droot, '2-popmasks'))
 
     # Get masked population dataframes for all mentioned cities.
     for city in city_list_df.itertuples():
         urbancenter_client.extract_city(
             city_name=city.City, 
             ID_HDC_G0=city.ID_HDC_G0, 
-            target_dir=os.path.join(droot, '3-interim/populationmasks'))
+            buffer=0)
