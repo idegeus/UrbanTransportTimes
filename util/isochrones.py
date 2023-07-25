@@ -252,14 +252,13 @@ class Isochrones:
         
         # Input checks
         batch = []
-        for (pid, point) in points:
+        for (pid, point) in enumerate(points):
             for trmode, tt_mnts_list, dep_dt, source in config:
                 for tt_mnts in tt_mnts_list:
                     batch.append((pid, point, trmode, tt_mnts, dep_dt, source))
         batch = gpd.GeoDataFrame(
             batch, columns=['pid', 'startpt', 'trmode', 'tt_mnts', 'dep_dt', 'source'], 
             geometry='startpt', crs='EPSG:4326')
-        batch['startpt'] = batch.startpt.apply(lambda x: self.nearest(x))
         batch['city_id'] = city_id
         batch['uid'] = batch.apply(lambda x: f"{x.city_id}-{x.pid}-{x.trmode}-{x.tt_mnts}m-{x.source}", axis=1)
         

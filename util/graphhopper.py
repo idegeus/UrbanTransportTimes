@@ -138,6 +138,7 @@ class Graphhopper:
         for attempt in range(attempts):
             
             # Start querying Grasshopper. 
+            json.dump({}, open(self.lockfile_path, 'w'))
             try:
                 # Starting docker
                 logging.info(f"Starting docker now with {mem}g memory, attempt #{attempt+1}.")
@@ -158,17 +159,18 @@ class Graphhopper:
                     line = str(line)
                     logging.info(line)
                     if "org.eclipse.jetty.server.Server - Started" in line:
-                        break
-                json.dump({}, open(self.lockfile_path, 'w'))
-                return
+                        return
+                
+                # If stream ends without showing Server Started line, it's a problem. Try again.
+                raise InterruptedError("Problem while successfully creating docker, please try again.")
         
-            except ConnectionError as error:
+            except ConnectionError:
                 logging.critical("Seems like docker unexpectedly quit. Retrying..")
-                logging.critical(error)
+                logging.critical(traceback.format_exc())
             
-            except Exception as error:
+            except Exception:
                 logging.critical("Something happened that stopped the querying:")
-                logging.critical(error)
+                logging.critical(traceback.format_exc())
     
     def stop(self):
         self.container.stop()
