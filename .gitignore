@@ -9,6 +9,7 @@
 1-data/2-gtfs/src/
 1-data/2-popmasks/
 1-data/2-gh/config-duttv2.yml
+1-data/2-gh/lockfile.json
 1-data/2-gh/graph-cache/
 1-data/2-gh/calibrate-cache/
 1-data/2-gh/example/
