@@ -170,7 +170,7 @@ class Isochrones:
         # Check if graphhopper url is actually set.
         assert len(self.graphhopper_url) > 0
         
-        iterator = tqdm(to_fetch.iterrows(), total=to_fetch.shape[0])
+        iterator = tqdm(to_fetch.iterrows(), total=to_fetch.shape[0], smoothing=0)
         for pid, item in iterator:
 
             # Get timezone estimation adoption so time is in local time, and format date string.
@@ -182,7 +182,10 @@ class Isochrones:
                 "driving_peak": 'car_cbr_peak',
                 "walking": 'foot',
                 "cycling": 'bike',
-                'transit': 'pt'
+                'transit_off': 'pt',
+                'transit_peak': 'pt',
+                'transit_off_bike': 'pt',
+                'transit_peak_bike': 'pt'
             }
 
             # Set required parameters.
@@ -194,10 +197,11 @@ class Isochrones:
             }
                 
             # Extra parameters are necessary if it is a public transport query.
-            if item['trmode'] == 'transit':
+            if gh_mode[item['trmode']] == 'pt':
                 params = params | {
                     "pt.access_profile": "foot",
-                    "pt.profile": 'false',
+                    "pt.egress_profile": "foot",
+                    "pt.profile": 'true',
                     "pt.earliest_departure_time": dep_dt_str,
                     "pt.arrive_by": 'false',
                     "reverse_flow": "false",
@@ -210,15 +214,21 @@ class Isochrones:
             
             # If polygons are in the response, calculate area and give some suggestion. 
             if 'polygons' in response_json:
+                # Check if there are indeed 1 multipolygon in here.
                 result = gpd.GeoDataFrame.from_features(response_json['polygons'], crs="EPSG:4326")
                 assert len(result) == 1
+                
+                # Check area size.
+                result_utm = result.to_crs(result.estimate_utm_crs())
+                area = result_utm.area[0]
+                if os.environ.get('ENVIRON', '') == 'dev' and area < 100:
+                    logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
+                
+                # Remove unneccesary detail and convert back to geometry to be saved.
+                result_utm.geometry = result_utm.buffer(10)
+                result = result_utm.to_crs("EPSG:4326")
                 geometry = result.iloc[0].geometry
                 
-                if os.environ.get('ENVIRON', '') == 'dev':
-                    area = result.to_crs(result.estimate_utm_crs()).area[0]
-                    if area < 100:
-                        logging.warning(f"Result for {item.uid} area is small: {area:.1f}m2.")
-            
             # If not in the response, give a warning and continue with an empty polygon. 
             else:
                 logging.warning(self.response)
@@ -265,7 +275,7 @@ class Isochrones:
         # Type checking
         assert batch.trmode.isin(['driving_off', 'driving_peak', 'transit_off', 'transit_peak', 'walking', 'cycling']).all()
         assert batch.source.isin(['g', 'b', 'h']).all() # GraphHopper, Bing, Here
-        logging.info(batch.head(15))
+        logging.debug(batch.head(15))
         
         # Localised batch to timezone-aware.
         center = batch.unary_union.centroid
@@ -281,7 +291,8 @@ class Isochrones:
         
         # Return if a dry run.
         if dry_run:
-            logging.info("Dry run: not fetching possible unavailable geometry due to flag.")
+            if frac_done < 1.0:
+                logging.info("Dry run: not fetching possible unavailable geometry due to flag.")
             return batch_cached, (len(batch), len(batch)-len(to_fetch), frac_done)
             
         # Fetch uncached isochrones
@@ -325,6 +336,8 @@ def test():
         # ('driving', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'b'),
         # ('transit', [15, 30], datetime(2023, 6, 13, 8, 30, 37), 'b'),
         # ('transit', [15, 30], datetime(2023, 6, 13, 13, 0, 37), 'b'), 
+        ('transit_off', [15, 30], datetime(2023, 6, 13, 13, 30, 37), 'g'),
+        ('transit_peak', [15, 30], datetime(2023, 6, 13, 8, 30, 37), 'g'),
         ('driving_off', [10, 25], datetime(2023, 6, 13, 8, 30, 0), 'g'),
         ('driving_peak', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'g'),
         ('cycling', [15, 30], datetime(2023, 6, 13, 8, 30, 0),  'g'), 
@@ -333,7 +346,7 @@ def test():
     
     isochrones = isochrone_client.get_isochrones(
         city_id=city.ID_HDC_G0, 
-        points=enumerate(gdf.centroid.to_crs("EPSG:4326")),
+        points=gdf.centroid.to_crs("EPSG:4326"),
         config=isochrone_config
     )
 

@@ -103,7 +103,7 @@ class Graphhopper:
             yaml.dump(self.config, f, sort_keys=False, default_flow_style=None)
         return
     
-    def build(self, force=False, attempts=5):
+    def build(self, force=False, attempts=5, display=False):
         
         # Check for cached speed correction factors.
         if (not force):
@@ -120,7 +120,9 @@ class Graphhopper:
             else:
                 logging.info("GH config changed, cleaning cache.")
             shutil.rmtree(os.path.join(self.droot, "2-gh/graph-cache"), ignore_errors=True)
-            os.remove(self.lockfile_path)
+            
+            if os.path.exists(self.lockfile_path):
+                os.remove(self.lockfile_path)
         
             # If config is the example configuration, use the pre-compiled graph-cache to speed up startup.
             example_path = os.path.join(self.droot, "2-gh/example/graph-cache")
@@ -157,12 +159,13 @@ class Graphhopper:
                 # Wait for Graphhopper to actually finish preparing the graph.
                 for line in self.container.logs(stream=True):
                     line = str(line)
-                    logging.info(line)
+                    if display:
+                        logging.info(line)
                     if "org.eclipse.jetty.server.Server - Started" in line:
                         return
                 
                 # If stream ends without showing Server Started line, it's a problem. Try again.
-                raise InterruptedError("Problem while successfully creating docker, please try again.")
+                # raise InterruptedError("Problem while successfully creating docker, please try again.") #TODO: Re-enable this.
         
             except ConnectionError:
                 logging.critical("Seems like docker unexpectedly quit. Retrying..")
@@ -325,13 +328,13 @@ class Graphhopper:
             logging.info("Start calibration for peak-hour")
             period = 'peak'
             res_peak = minimize(error_function, start_factors, tol=5, bounds=bounds, method='Nelder-Mead', options={'maxfev': 40})
-            self.set_factors(profile='car_cbr_peak', factors=res_peak.x)
+            self.set_factors(profile='car_cbr_peak', factors=res_peak.x.tolist())
             
             # Off-peak-hour
             logging.info("Start calibration for off-peak-hour")
             period = 'off'
             res_off = minimize(error_function, start_factors, tol=5, bounds=bounds, method='Nelder-Mead', options={'maxfev': 40})
-            self.set_factors(profile='car_cbr_off', factors=res_off.x)
+            self.set_factors(profile='car_cbr_off', factors=res_off.x.tolist())
             
             self.stop()
             self.build(force=True)
@@ -364,7 +367,7 @@ def test():
     graphhopper = Graphhopper(droot=DROOT, city=city.ID_HDC_G0)
     graphhopper.set_osm("/1-data/2-osm/example/amsterdam.osm.pbf")
     graphhopper.set_gtfs(["1-data/2-gtfs/example/2167-f-u-nl.gtfs.zip","1-data/2-gtfs/example/2167-f-u-flixbus.gtfs.zip"])
-    graphhopper.build()
+    graphhopper.build(display=True)
     
     # Try to calibrate example build.
     sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
