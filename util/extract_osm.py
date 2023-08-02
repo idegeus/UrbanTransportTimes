@@ -4,7 +4,7 @@ from shapely.geometry import Polygon
 import geopandas as gpd
 import logging
 
-def extract_osm(osm_src, osm_out, bbox, buffer_m=0, overwrite=False):
+def extract_osm(osm_src, osm_out, bbox, buffer_m=0, force=False):
     """Builds smaller extracts from OSM Source file
 
     Args:
@@ -12,7 +12,7 @@ def extract_osm(osm_src, osm_out, bbox, buffer_m=0, overwrite=False):
         osm_out (path): Destination path, preferably with city_id. 
         bbox (Polygon): Shapely polygon, which will be covered in extract.
         buffer_m (int): Meters of buffer around the bounding box. 
-        overwrite (bool): Whether or not to recreate file if already exists. 
+        force (bool): Whether or not to recreate file if already exists. 
 
     Returns 0 if successful. 
     """
@@ -21,7 +21,7 @@ def extract_osm(osm_src, osm_out, bbox, buffer_m=0, overwrite=False):
     assert isinstance(bbox, Polygon)
     
     # Skip if already exists. 
-    if os.path.exists(osm_out) and not overwrite:
+    if os.path.exists(osm_out) and not force:
         logging.info(f'Extract already exists: {osm_out}')
         return 0
     

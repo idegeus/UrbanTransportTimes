@@ -292,7 +292,7 @@ class Isochrones:
         # Return if a dry run.
         if dry_run:
             if frac_done < 1.0:
-                logging.info("Dry run: not fetching possible unavailable geometry due to flag.")
+                logging.info("Dry run flag: not fetching unavailable geometry.")
             return batch_cached, (len(batch), len(batch)-len(to_fetch), frac_done)
             
         # Fetch uncached isochrones

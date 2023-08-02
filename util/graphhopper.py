@@ -32,7 +32,6 @@ class Graphhopper:
     lockfile_path = ''
     
     def __init__(self, droot, city):
-        self.dclient = docker.from_env()
         self.droot = droot
         self.city = str(city)
         self.config_src_path   = os.path.join(self.droot, '2-gh', 'config-duttv2.src.yml')
@@ -57,7 +56,10 @@ class Graphhopper:
     
     def set_gtfs(self, gtfs_paths):
         assert isinstance(gtfs_paths, (list, np.array, pd.Series))
-        self.config['graphhopper']['gtfs.file'] = ",".join(gtfs_paths)
+        if len(gtfs_paths) > 0:
+            self.config['graphhopper']['gtfs.file'] = ",".join(gtfs_paths)
+        else:
+            self.config['graphhopper'].pop('gtfs.file')
         self.set_config()
     
     def set_factors(self, profile, factors):
@@ -103,7 +105,9 @@ class Graphhopper:
             yaml.dump(self.config, f, sort_keys=False, default_flow_style=None)
         return
     
-    def build(self, force=False, attempts=5, display=False):
+    def build(self, force=False, attempts=5):
+        
+        self.dclient = docker.from_env()
         
         # Check for cached speed correction factors.
         if (not force):
@@ -143,7 +147,7 @@ class Graphhopper:
             json.dump({}, open(self.lockfile_path, 'w'))
             try:
                 # Starting docker
-                logging.info(f"Starting docker now with {mem}g memory, attempt #{attempt+1}.")
+                logging.info(f"Starting docker build, time estim. ~5min. (mem={mem}g, attempt=#{attempt+1})")
                 self.container = self.dclient.containers.run(
                     image="israelhikingmap/graphhopper", 
                     detach=True,
@@ -159,11 +163,13 @@ class Graphhopper:
                 # Wait for Graphhopper to actually finish preparing the graph.
                 for line in self.container.logs(stream=True):
                     line = str(line)
-                    if display:
-                        logging.info(line)
+                    if not "Invalid reference" in line:
+                        logging.debug(line)
                     if "org.eclipse.jetty.server.Server - Started" in line:
                         return
-                
+                    if "custom speed <= maxSpeed" in line:
+                        logging.critical("Factor above max speed, graphhopper quitting.")
+                                    
                 # If stream ends without showing Server Started line, it's a problem. Try again.
                 # raise InterruptedError("Problem while successfully creating docker, please try again.") #TODO: Re-enable this.
         
@@ -177,7 +183,6 @@ class Graphhopper:
     
     def stop(self):
         self.container.stop()
-        self.container.remove()
         os.remove(self.lockfile_path)
         return
     
@@ -221,9 +226,9 @@ class Graphhopper:
         assert period in ['peak', 'off']
         
         if period == 'peak':
-            dp_datetime = '2023-07-26T06:30:00.045123456Z'
+            dp_datetime = '2023-08-15T06:30:00.045123456Z'
         else:
-            dp_datetime = '2023-07-26T11:30:00.045123456Z'
+            dp_datetime = '2023-08-15T11:30:00.045123456Z'
         
         google_key = os.environ.get("GOOGLE_KEY")
         headers = {
@@ -263,7 +268,6 @@ class Graphhopper:
             cache_dir = os.path.join(self.droot, '2-gh/calibrate-cache/')
         os.makedirs(cache_dir, exist_ok=True)
         
-        points = points.apply(lambda x: self.nearest(x))
         points = enumerate(points)
         sample_routes = list(itertools.combinations(points, 2))
     
@@ -272,15 +276,23 @@ class Graphhopper:
         for ((p1_pid, p1), (p2_pid, p2)) in sample_routes:
             google_cache = os.path.join(cache_dir, f"{self.city}-{p1_pid}-{p2_pid}-google-{period}.json")
 
+            response_google = {}
             if os.path.exists(google_cache):
                 response_google = json.load(open(google_cache, 'r'))
-            else:
+            if not 'routes' in response_google: # In case something went wrong initially. 
                 response_google = self.route_google(p1, p2, period=period)
                 json.dump(response_google, open(google_cache, 'w'))
                 logging.debug(f'Fetched {p1_pid}->{p2_pid} from Google for {period}.')
+            
+            # Check if there's a route now.
+            if not 'routes' in response_google:
+                logging.warning(f'Fetched {p1}-{p2} had no google route: {str(response_google)}')
             route_google = response_google['routes'][0]
         
             response_gh = self.route_gh(p1, p2, factors)
+            if 'paths' not in response_gh:
+                logging.warning(f'Fetched {p1}-{p2} had no GH route: {str(response_gh)}')
+                continue
             
             results.append([
                 p1_pid, p2_pid,
@@ -308,7 +320,7 @@ class Graphhopper:
         
         return results
     
-    def calibrate(self, points, start_factors = np.full(5, 0.8), force=False):
+    def calibrate(self, points, start_factors = np.full(5, 0.8), force=False, max=1.0):
         
         if self.calibrated and not force:
             logging.info('Already calibrated earlier based on cached factors, skipping. Add calibrate(force=True) to force.')
@@ -317,11 +329,12 @@ class Graphhopper:
         if len(points) > 20:
             logging.warning(f"With > 20 points, calibration is much slower while not much better. You gave {len(points)}.")
         
+        points = points.apply(lambda x: self.nearest(x))
+        bounds = [(0.5, max)] * 5
         period = ''
         def error_function(factors):
             results = self.get_comparison(points, factors=factors, period=period)
             return results.error_corrected.sum()
-        bounds = [(0.6, 1.1)] * 5
         
         try:
             # Peak-hour
@@ -346,7 +359,12 @@ class Graphhopper:
     def nearest(self, point):
         url = "http://localhost:8989/nearest"
         response = requests.request("GET", url, params={"point": f"{point.y},{point.x}"}).json()
+        if not 'coordinates' in response:
+            logging.warning(f"GH Nearest no resolve: {response}")
+            return point
+        
         coords = response['coordinates']
+        
         return Point(coords[0], coords[1])
 
 def test():
