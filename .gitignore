@@ -1,4 +1,5 @@
 .env
+**/*.log
 **/__pycache__
 **/.DS_Store
 
@@ -15,5 +16,6 @@
 1-data/2-gh/example/
 1-data/2-gh/logs/
 1-data/3-traveltime-cache/
+1-data/3-traveltime-cities/
 
 4-misc/
