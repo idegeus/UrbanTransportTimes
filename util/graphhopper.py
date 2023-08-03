@@ -117,6 +117,7 @@ class Graphhopper:
         # Check if config is correct, and whether rebuilding is necessary.
         if self.config == self.config_original and not os.path.exists(self.lockfile_path):
             logging.info("Cache already exists, not rebuilding.")
+            clean_cache_folder = False
         else:
             if self.config == self.config_src:
                 logging.info("This is a default example build.")
@@ -127,8 +128,9 @@ class Graphhopper:
             
             cache_path = os.path.join(self.droot, "2-gh/graph-cache")
             if os.path.exists(cache_path):
-                shutil.rmtree(cache_path)
+                clean_cache_folder = True
             else:
+                clean_cache_folder = False
                 logging.info("Cache path didn't exist, probably first execution. Continuing.")
             
             if os.path.exists(self.lockfile_path):
@@ -155,12 +157,13 @@ class Graphhopper:
             try:
                 # Starting docker
                 logging.info(f"Starting docker build, time estim. ~5min. (mem={mem}g, attempt=#{attempt+1})")
+                clean_cache_folder = "&& rm -rf ./1-data/2-gh/graph-cache/" if clean_cache_folder else ""
                 self.container = self.dclient.containers.run(
                     image=docker_image, 
                     detach=True,
                     init=True,
                     labels={'DUTTv2_container': 'yes'},
-                    command=f'"cd ../ && java -Xmx{mem}g -Xms{mem}g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
+                    command=f'"cd ../ {clean_cache_folder} && java -Xmx{mem}g -Xms{mem}g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
                     environment={"JAVA_OPTS": f"-Xmx{mem}g -Xms{mem}g"},
                     volumes={os.path.realpath(self.droot): {'bind': '/1-data', 'mode': 'rw'}}, 
                     entrypoint='/bin/bash -c',
