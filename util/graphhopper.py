@@ -1,5 +1,6 @@
 import os
 import logging
+import stat
 import pandas as pd
 import numpy as np
 import itertools
@@ -126,7 +127,10 @@ class Graphhopper:
             
             cache_path = os.path.join(self.droot, "2-gh/graph-cache")
             if os.path.exists(cache_path):
-                shutil.rmtree(cache_path)
+                def del_rw(action, name, exc):
+                    os.chmod(name, stat.S_IWRITE)
+                    os.remove(name)
+                shutil.rmtree(cache_path, onerror=del_rw)
             else:
                 logging.info("Cache path didn't exist, probably first execution. Continuing.")
             
