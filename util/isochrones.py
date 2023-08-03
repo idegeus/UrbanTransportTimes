@@ -15,6 +15,9 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 
 sys.path.append(os.path.realpath('../'))
+from util.fetch_transitland_gtfs import GtfsDownloader
+from util.graphhopper import Graphhopper
+from util.extract_osm import extract_osm
 from util.extract_urbancenter import ExtractCenters
 
 class Isochrones:
@@ -184,8 +187,8 @@ class Isochrones:
                 "cycling": 'bike',
                 'transit_off': 'pt',
                 'transit_peak': 'pt',
-                'transit_off_bike': 'pt',
-                'transit_peak_bike': 'pt'
+                'transit_bike_off': 'pt',
+                'transit_bike_peak': 'pt'
             }
 
             # Set required parameters.
@@ -198,14 +201,16 @@ class Isochrones:
                 
             # Extra parameters are necessary if it is a public transport query.
             if gh_mode[item['trmode']] == 'pt':
+                profile = 'bike' if "bike" in item['trmode'] else "foot"
                 params = params | {
-                    "pt.access_profile": "foot",
-                    "pt.egress_profile": "foot",
-                    "pt.profile": 'true',
+                    "pt.access_profile": profile,
+                    "pt.egress_profile": profile,
                     "pt.earliest_departure_time": dep_dt_str,
-                    "pt.arrive_by": 'false',
-                    "reverse_flow": "false",
-                    'profile': 'pt',
+                    "pt.limit_street_time": "PT120M"
+                    # "pt.profile": 'true', # Not Supported yet.
+                    # "pt.arrive_by": 'false',
+                    # "reverse_flow": "false",
+                    # 'profile': 'pt',
                 }
         
             # Execute query.
@@ -273,7 +278,10 @@ class Isochrones:
         batch['uid'] = batch.apply(lambda x: f"{x.city_id}-{x.pid}-{x.trmode}-{x.tt_mnts}m-{x.source}", axis=1)
         
         # Type checking
-        assert batch.trmode.isin(['driving_off', 'driving_peak', 'transit_off', 'transit_peak', 'walking', 'cycling']).all()
+        assert batch.trmode.isin(['driving_off', 'driving_peak', 
+                                  'transit_off', 'transit_peak', 
+                                  'transit_bike_off', 'transit_bike_peak', 
+                                  'walking', 'cycling']).all()
         assert batch.source.isin(['g', 'b', 'h']).all() # GraphHopper, Bing, Here
         logging.debug(batch.head(15))
         
@@ -315,33 +323,51 @@ class Isochrones:
 def test():
     
     load_dotenv()
+    DROOT = '../1-data'
     logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
-    DROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../1-data')
     urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, "2-external"), target_dir=os.path.join(DROOT, "2-popmasks"), res=1000)
-    
+    gtfs_client        = GtfsDownloader(os.environ.get("TRANSITLAND_KEY"))
     CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.test.db')
-    isochrone_client = Isochrones(
-        graphhopper_url="http://localhost:8989", 
-        bing_key=os.environ['BING_API_KEY'],
-        db=CACHE)
+    isochrone_client = Isochrones(graphhopper_url="http://localhost:8989", db=CACHE)
     
     # Read a test city to be processed.
     cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
-    city = cities[cities.City == 'Amsterdam'].iloc[0]
-    pcl_path = urbancenter_client.extract_city(city.City, city.ID_HDC_G0)
+    city = cities[cities.city_name == 'Amsterdam'].iloc[0]
+    
+    # Read Pickle of urban-center.
+    pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
+    osm_src = os.path.join(DROOT, '2-osm', 'src', 'europe-latest.osm.pbf')
+    osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
+    bbox = gdf.to_crs('EPSG:4326').unary_union
+    extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
+    
+    # Fetch GTFS files
+    gtfs_client.set_search(bbox.centroid, bbox, 10000)
+    feed_ids = gtfs_client.search_feeds()
+    feed_paths = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), city.city_id)
+    
+    # Boot Graphhopper instance
+    graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
+    graphhopper.set_osm(osm_out)
+    graphhopper.set_gtfs(feed_paths)
+    graphhopper.build()
+    
     # Set queries and
+    peak_dt = datetime(2023, 6, 13, 8, 30, 0)
+    off_dt  = datetime(2023, 6, 13, 13, 30, 0)
     isochrone_config = [
-        # ('driving', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'b'),
-        # ('transit', [15, 30], datetime(2023, 6, 13, 8, 30, 37), 'b'),
-        # ('transit', [15, 30], datetime(2023, 6, 13, 13, 0, 37), 'b'), 
-        ('transit_off', [15, 30], datetime(2023, 6, 13, 13, 30, 37), 'g'),
-        ('transit_peak', [15, 30], datetime(2023, 6, 13, 8, 30, 37), 'g'),
-        ('driving_off', [10, 25], datetime(2023, 6, 13, 8, 30, 0), 'g'),
-        ('driving_peak', [10, 25], datetime(2023, 6, 13, 8, 30, 0),  'g'),
-        ('cycling', [15, 30], datetime(2023, 6, 13, 8, 30, 0),  'g'), 
-        ('walking', [15, 30], datetime(2023, 6, 13, 8, 30, 0),  'g')
+        # ('driving',          [10, 25], peak_dt, 'b'),
+        # ('transit',          [15, 30], peak_dt, 'b'),
+        ('transit_off',        [15, 30], off_dt,  'g'),
+        ('transit_peak',       [15, 30], peak_dt, 'g'),
+        ('transit_bike_off',   [15, 30], off_dt,  'g'),
+        ('transit_bike_peak',  [15, 30], peak_dt, 'g'),
+        ('driving_off',        [10, 25], off_dt,  'g'),
+        ('driving_peak',       [10, 25], peak_dt, 'g'),
+        ('cycling',            [15, 30], peak_dt, 'g'), 
+        ('walking',            [15, 30], peak_dt, 'g')
     ]
     
     isochrones = isochrone_client.get_isochrones(

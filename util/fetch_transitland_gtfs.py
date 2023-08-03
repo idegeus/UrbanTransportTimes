@@ -6,6 +6,7 @@ import geopandas as gpd
 import requests
 import gtfs_kit as gk
 import logging
+import numpy as np
 
 class GtfsDownloader:
     
@@ -79,7 +80,7 @@ class GtfsDownloader:
         """
         
         assert os.path.exists(target_dir)
-        assert isinstance(city_id, str) or isinstance(city_id, int)
+        assert isinstance(city_id, str) or isinstance(city_id, int) or isinstance(city_id, np.int64)
         
         # Create in- and output directories.
         os.makedirs(os.path.join(target_dir, 'src'), exist_ok=True)
@@ -106,12 +107,12 @@ class GtfsDownloader:
         feeds = []
         for feed_id in feed_ids:
 
+            # Declare the directory path for the GTFS zip file
+            gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
+            gtfs_out = os.path.join(target_dir, 'out', f'{city_id}-{feed_id}.gtfs.zip')
+            
+            # Check if it already exists, if so, read in (if needed) and skip.
             try:
-                # Declare the directory path for the GTFS zip file
-                gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
-                gtfs_out = os.path.join(target_dir, 'out', f'{city_id}-{feed_id}.gtfs.zip')
-                
-                # Check if it already exists, if so, read in (if needed) and skip.
                 if os.path.exists(gtfs_out) and not force_extr:
                     logging.debug(f"Already extracted: {feed_id}")
                     newfeed = gk.read_feed(gtfs_out, dist_units='km')
@@ -127,34 +128,36 @@ class GtfsDownloader:
                     logging.debug(f'Trips: {feed.trips.shape}')
                     logging.debug(feed.assess_quality())
                     
-                    newfeed = feed.restrict_to_area(self.bbox_gdf) # Limit geographic range
+                    newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230725']) # Limit geographic range
                     newfeed = newfeed.create_shapes(all_trips=True) # Recreate shapes for accuracy.
                     newfeed.write(gtfs_out)
-                    
-                # Check for validity, and if good, write out. TODO: Repair feeds if possible.
-                logging.debug(f'===== Feed {feed_id} after restrictions.')
-                logging.debug(newfeed.routes.head(10))
-                logging.debug(f'Routes: {newfeed.routes.shape}')
-                logging.debug(f'Stops: {newfeed.stops.shape}')
-                logging.debug(f'Trips: {newfeed.trips.shape}')
-                try:
-                    logging.debug(newfeed.assess_quality())
-                except:
-                    logging.critical(traceback.print_exc())
                 
-                if (not isinstance(newfeed.routes, pd.DataFrame)
-                    or newfeed.stops.shape[0] == 0 
-                    or newfeed.trips.shape[0] == 0 
-                    or newfeed.assess_quality().iloc[14].value == 'bad feed'
-                ):
-                    logging.warning(f'Not adding {feed_id}, bad feed, please repair. Continuing without...')
-                else:
-                    feeds.append(gtfs_out)
-            
             # Sometimes there's a read error. 
             except pd.errors.ParserError:
                 logging.warning(f'Not adding {feed_id}, bad feed, read exception. Continuing without...')
                 logging.warning(traceback.format_exc())
+                continue;
+                
+            # Check for validity. 
+            if not isinstance(newfeed.routes, pd.DataFrame):
+                logging.info(f"Feed {feed_id} was empty. This can be because nothing was within bbox.")
+                continue
+            
+            logging.debug(f'===== Feed {feed_id} after restrictions.')
+            logging.debug(f'Routes: {newfeed.routes.shape}')
+            logging.debug(f'Stops: {newfeed.stops.shape}')
+            logging.debug(f'Trips: {newfeed.trips.shape}')
+            logging.debug(newfeed.routes.head(10))
+            
+            # Print assessment.
+            try:
+                logging.debug(newfeed.assess_quality())
+            except:
+                logging.critical(traceback.print_exc())
+            
+            # If good, add to feed list.
+            if (newfeed.stops.shape[0] > 0 and newfeed.trips.shape[0] > 0):
+                feeds.append(gtfs_out)
         
         return feeds
 

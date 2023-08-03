@@ -50,13 +50,17 @@ for pid, city in cities.iterrows():
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
+    peak_dt = datetime(2023, 6, 13, 8, 30, 0)
+    off_dt  = datetime(2023, 6, 13, 13, 30, 0)
     isochrone_config = [
-        ('transit_off', [15], datetime(2023, 6, 13, 13, 30, 37), 'g'),
-        ('transit_peak', [15], datetime(2023, 6, 13, 8, 30, 37), 'g'),
-        ('driving_off', [10], datetime(2023, 6, 13, 8, 30, 0), 'g'),
-        ('driving_peak', [10], datetime(2023, 6, 13, 8, 30, 0),  'g'),
-        ('cycling', [15], datetime(2023, 6, 13, 8, 30, 0),  'g'), 
-        ('walking', [15], datetime(2023, 6, 13, 8, 30, 0),  'g')
+        ('transit_off',        [15, 30], off_dt,  'g'),
+        ('transit_peak',       [15, 30], peak_dt, 'g'),
+        ('transit_bike_off',   [15, 30], off_dt,  'g'),
+        ('transit_bike_peak',  [15, 30], peak_dt, 'g'),
+        ('driving_off',        [10, 25], off_dt,  'g'),
+        ('driving_peak',       [10, 25], peak_dt, 'g'),
+        ('cycling',            [15, 30], peak_dt, 'g'), 
+        ('walking',            [15, 30], peak_dt, 'g')
     ]
     
     # Check if records are all done 
@@ -71,9 +75,7 @@ for pid, city in cities.iterrows():
         continue
     
     # Create OSM extracts
-    osm_src = os.path.join(DROOT, '2-osm', 'src', 'europe-latest.osm.pbf')
-    if os.path.isdir("/Volumes/SchijfArchief/"):
-        osm_src = "/Volumes/SchijfArchief/2.2 DUTTv2/planet-230619.osm.pbf"
+    osm_src = os.environ.get('OSM_PLANET_PBF', os.path.join(DROOT, '2-osm', 'src', 'europe-latest.osm.pbf'))
     osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)

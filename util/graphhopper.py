@@ -136,6 +136,7 @@ class Graphhopper:
         
         # Remove other dockers
         mem = os.environ.get('MEMORY', 8)
+        docker_image = os.environ.get('DOCKER_IMG', "israelhikingmap/graphhopper")
         for d in self.dclient.containers.list(filters={"label": "DUTTv2_container=yes"}):
             logging.info(d)
             d.stop()
@@ -149,7 +150,7 @@ class Graphhopper:
                 # Starting docker
                 logging.info(f"Starting docker build, time estim. ~5min. (mem={mem}g, attempt=#{attempt+1})")
                 self.container = self.dclient.containers.run(
-                    image="israelhikingmap/graphhopper", 
+                    image=docker_image, 
                     detach=True,
                     init=True,
                     labels={'DUTTv2_container': 'yes'},
@@ -377,20 +378,20 @@ def test():
     
     # Read a test city to be processed.
     cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
-    city = cities[cities.City == 'Amsterdam'].iloc[0]
+    city = cities[cities.City == 'Stockholm'].iloc[0]
     pcl_path = urbancenter_client.extract_city(city.City, city.ID_HDC_G0)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
     # Run default example build. 
     graphhopper = Graphhopper(droot=DROOT, city=city.ID_HDC_G0)
-    graphhopper.set_osm("/1-data/2-osm/example/amsterdam.osm.pbf")
-    graphhopper.set_gtfs(["1-data/2-gtfs/example/2167-f-u-nl.gtfs.zip","1-data/2-gtfs/example/2167-f-u-flixbus.gtfs.zip"])
-    graphhopper.build(display=True)
+    graphhopper.set_osm("/1-data/2-osm/example/stockholm.osm.pbf") # 2973
+    graphhopper.set_gtfs(["/1-data/2-gtfs/example/2973-f-u-flixbus.gtfs.zip", "/1-data/2-gtfs/example/2973-f-u-se.gtfs.zip"])
+    graphhopper.build()
     
     # Try to calibrate example build.
-    sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
-    sample = sample.apply(lambda x: graphhopper.nearest(x))
-    graphhopper.calibrate(sample)
+    # sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
+    # sample = sample.apply(lambda x: graphhopper.nearest(x))
+    # graphhopper.calibrate(sample)
 
     # === Here you run the actual fetching. 
 
