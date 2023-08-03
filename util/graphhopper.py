@@ -127,10 +127,16 @@ class Graphhopper:
             
             cache_path = os.path.join(self.droot, "2-gh/graph-cache")
             if os.path.exists(cache_path):
-                def del_rw(action, name, exc):
-                    os.chmod(name, stat.S_IWRITE)
-                    os.remove(name)
-                shutil.rmtree(cache_path, onerror=del_rw)
+                def setWritePermission(path):
+                    os.chmod(path,stat.S_IWRITE)
+                    for file_ in os.listdir(path):
+                        filePath = os.path.join(path, file_)
+                        if os.path.isdir(filePath):
+                            setWritePermission(filePath)
+                        else:
+                            os.chmod(filePath, stat.S_IWRITE)
+                setWritePermission(cache_path)
+                shutil.rmtree(cache_path)
             else:
                 logging.info("Cache path didn't exist, probably first execution. Continuing.")
             
