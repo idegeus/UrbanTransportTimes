@@ -153,8 +153,11 @@ class GtfsDownloader:
             
             # If good, add to feed list.
             if (newfeed.stops.shape[0] > 0 and newfeed.trips.shape[0] > 0):
+                logging.info(f"Appending feed {feed_id} correctly.")
                 feeds.append(gtfs_out)
         
+        if len(feed_ids) - len(feeds) > 1:
+            logging.warning(f"Out of total {len(feed_ids)}, only {len(feeds)} were found fit.")
         return feeds
 
 # Test        
