@@ -118,7 +118,7 @@ class GtfsDownloader:
                     newfeed = gk.read_feed(gtfs_out, dist_units='km')
                 else:
                     # Read the feed with gtfs-kit, restrict to bounding box, and write out.
-                    logging.info(f"Creating GTFS extract at {gtfs_out}")
+                    logging.info(f"Creating GTFS extract at {gtfs_out}. (force_extr={str(force_extr)})")
                     feed = gk.read_feed(gtfs_in, dist_units='km')
                     
                     logging.debug(f'===== Feed {feed_id} before limiting:')
@@ -126,9 +126,9 @@ class GtfsDownloader:
                     logging.debug(f'Routes: {feed.routes.shape}')
                     logging.debug(f'Stops: {feed.stops.shape}')
                     logging.debug(f'Trips: {feed.trips.shape}')
-                    logging.debug(feed.assess_quality())
                     
-                    newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230725']) # Limit geographic range
+                    # Limit geographic and date range
+                    newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230725']) 
                     newfeed = newfeed.create_shapes(all_trips=True) # Recreate shapes for accuracy.
                     newfeed.write(gtfs_out)
                 
@@ -137,9 +137,11 @@ class GtfsDownloader:
                 logging.warning(f'Not adding {feed_id}, bad feed, read exception. Continuing without...')
                 logging.warning(traceback.format_exc())
                 continue;
-                
+            
             # Check for validity. 
-            if not isinstance(newfeed.routes, pd.DataFrame):
+            if not (isinstance(newfeed.routes, pd.DataFrame) 
+                    and isinstance(newfeed.stops, pd.DataFrame)
+                    and isinstance(newfeed.trips, pd.DataFrame)):
                 logging.info(f"Feed {feed_id} was empty. This can be because nothing was within bbox.")
                 continue
             
@@ -148,12 +150,6 @@ class GtfsDownloader:
             logging.debug(f'Stops: {newfeed.stops.shape}')
             logging.debug(f'Trips: {newfeed.trips.shape}')
             logging.debug(newfeed.routes.head(10))
-            
-            # Print assessment.
-            try:
-                logging.debug(newfeed.assess_quality())
-            except:
-                logging.critical(traceback.print_exc())
             
             # If good, add to feed list.
             if (newfeed.stops.shape[0] > 0 and newfeed.trips.shape[0] > 0):

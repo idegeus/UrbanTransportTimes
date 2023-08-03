@@ -84,7 +84,7 @@ for pid, city in cities.iterrows():
     gtfs_client.set_search(bbox.centroid, bbox, 10000)
     feed_ids = gtfs_client.search_feeds()
     gtfs_out_dir = os.path.join(DROOT, '2-gtfs')
-    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.city_id, force_extr=True)
+    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.city_id)
     
     for attempt in range(5):
     
