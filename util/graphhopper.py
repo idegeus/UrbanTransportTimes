@@ -123,7 +123,12 @@ class Graphhopper:
                 logging.info("Force cleaning cache.")
             else:
                 logging.info("GH config changed, cleaning cache.")
-            shutil.rmtree(os.path.join(self.droot, "2-gh/graph-cache"), ignore_errors=True)
+            
+            cache_path = os.path.join(self.droot, "2-gh/graph-cache")
+            if os.path.exists(cache_path):
+                shutil.rmtree(cache_path)
+            else:
+                logging.info("Cache path didn't exist, probably first execution. Continuing.")
             
             if os.path.exists(self.lockfile_path):
                 os.remove(self.lockfile_path)
