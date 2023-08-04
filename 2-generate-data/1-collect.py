@@ -11,6 +11,7 @@ import warnings
 from urllib import error
 
 # Import custom libraries
+DROOT = '../1-data'
 sys.path.append(os.path.realpath('../'))
 from util.isochrones import Isochrones
 from util.graphhopper import Graphhopper
@@ -21,7 +22,7 @@ from util.extract_osm import extract_osm
 # Create a file handler and set the level to DEBUG
 formatter = logging.Formatter('%(asctime)s: %(levelname)-8s %(message)s', datefmt='%Y%m%d,%H:%M:%S')
 logging.getLogger().setLevel(logging.DEBUG)
-file_handler = RotatingFileHandler('debug.log', mode='a', maxBytes=2*1024*1024, backupCount=2)
+file_handler = RotatingFileHandler(os.path.join(DROOT, 'debug.log'), mode='a', maxBytes=2*1024*1024, backupCount=2)
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logging.getLogger().addHandler(file_handler)
@@ -30,7 +31,6 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
 
-DROOT = '../1-data'
 load_dotenv()
 
 # Read a test city to be processed.
