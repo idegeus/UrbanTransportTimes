@@ -19,7 +19,7 @@ from util.extract_osm import extract_osm
 # formatter = logging.Formatter('%(name)-6s: %(levelname)-8s %(message)s')
 formatter = logging.Formatter('%(asctime)s: %(levelname)-8s %(message)s', datefmt='%Y%m%d,%H:%M:%S')
 logging.getLogger().setLevel(logging.DEBUG)
-file_handler = logging.FileHandler('debug.log')
+file_handler = logging.RotatingFileHandler('debug.log', mode='a', maxBytes=2*1024*1024, backupCount=2)
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 logging.getLogger().addHandler(file_handler)
