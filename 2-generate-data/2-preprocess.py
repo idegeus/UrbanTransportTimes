@@ -16,7 +16,7 @@ from util.isochrones import Isochrones
 from util.extract_urbancenter import ExtractCenters
 
 # Start processing cities.
-DROOT = './1-data/'
+DROOT = '../1-data/'
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
 CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.main.v2.db')
 isochrone_client   = Isochrones(bing_key=os.environ['BING_API_KEY'], db=CACHE)

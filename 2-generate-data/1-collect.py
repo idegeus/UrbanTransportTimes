@@ -30,7 +30,7 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
 
-DROOT = './1-data'
+DROOT = '../1-data'
 load_dotenv()
 
 # Read a test city to be processed.
