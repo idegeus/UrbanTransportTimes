@@ -157,7 +157,7 @@ class Graphhopper:
             try:
                 # Starting docker
                 logging.info(f"Starting docker build, time estim. ~5min. (mem={mem}g, attempt=#{attempt+1})")
-                clean_cache_folder = "&& rm -rf ./1-data/2-gh/graph-cache/" if clean_cache_folder else ""
+                clean_cache_folder = "&& rm -rf 1-data/2-gh/graph-cache/" if clean_cache_folder else ""
                 self.container = self.dclient.containers.run(
                     image=docker_image, 
                     detach=True,

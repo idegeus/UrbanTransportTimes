@@ -201,6 +201,7 @@ class Isochrones:
                 
             # Extra parameters are necessary if it is a public transport query.
             if gh_mode[item['trmode']] == 'pt':
+                endpoint = f'{self.graphhopper_url}/isochrone-pt'
                 profile = 'bike' if "bike" in item['trmode'] else "foot"
                 params = params | {
                     "pt.access_profile": profile,
