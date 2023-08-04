@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import traceback
 import pandas as pd
@@ -6,12 +7,13 @@ import geopandas as gpd
 from datetime import datetime
 from dotenv import load_dotenv
 import warnings
-from util.extract_urbancenter import ExtractCenters
 from urllib import error
-from util.graphhopper import Graphhopper
 
 # Import custom libraries
+sys.path.append(os.path.realpath('../'))
 from util.isochrones import Isochrones
+from util.graphhopper import Graphhopper
+from util.extract_urbancenter import ExtractCenters
 from util.fetch_transitland_gtfs import GtfsDownloader
 from util.extract_osm import extract_osm
 

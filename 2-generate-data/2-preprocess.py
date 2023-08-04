@@ -1,33 +1,23 @@
 import pandas as pd
 import geopandas as gpd
 import os
-import numpy as np
 import sys
 from datetime import datetime
-import contextily as ctx
-import itertools
-import matplotlib.pyplot as plt
-
-from tqdm import tqdm
-tqdm.pandas()
-
-from shapely.geometry import Point, Polygon, MultiPolygon
-from shapely import wkt
-from shapely import wkt
-
+from shapely.geometry import Polygon
 import logging
 logging.getLogger().setLevel(logging.INFO)
+
 from dotenv import load_dotenv
 load_dotenv()
 
+# Import custom libraries
 sys.path.append(os.path.realpath('../'))
 from util.isochrones import Isochrones
 from util.extract_urbancenter import ExtractCenters
 
+# Start processing cities.
 DROOT = './1-data/'
-
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
-
 CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.main.v2.db')
 isochrone_client   = Isochrones(bing_key=os.environ['BING_API_KEY'], db=CACHE)
 urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, '2-external'), 
@@ -41,13 +31,17 @@ for pid, city in cities.iterrows():
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
 
+    peak_dt = datetime(2023, 6, 13, 8, 30, 0)
+    off_dt  = datetime(2023, 6, 13, 13, 30, 0)
     isochrone_config = [
-        # ('transit_off', [15], datetime(2023, 6, 13, 13, 30, 37), 'g'),
-        # ('transit_peak', [15], datetime(2023, 6, 13, 8, 30, 37), 'g'),
-        ('driving_off', [10], datetime(2023, 6, 13, 8, 30, 0), 'g'),
-        ('driving_peak', [10], datetime(2023, 6, 13, 8, 30, 0),  'g'),
-        ('cycling', [15], datetime(2023, 6, 13, 8, 30, 0),  'g'), 
-        ('walking', [15], datetime(2023, 6, 13, 8, 30, 0),  'g')
+        ('transit_off',        [15, 30], off_dt,  'g'),
+        ('transit_peak',       [15, 30], peak_dt, 'g'),
+        ('transit_bike_off',   [15, 30], off_dt,  'g'),
+        ('transit_bike_peak',  [15, 30], peak_dt, 'g'),
+        ('driving_off',        [10, 25], off_dt,  'g'),
+        ('driving_peak',       [10, 25], peak_dt, 'g'),
+        ('cycling',            [15, 30], peak_dt, 'g'), 
+        ('walking',            [15, 30], peak_dt, 'g')
     ]
     
     # Check if records are all done 
