@@ -5,7 +5,7 @@
 
 1-data/0-tmp/
 1-data/2-external/
-1-data/2-osm/
+1-data/2-osm/**/*.osm.pbf
 1-data/2-gtfs/out/
 1-data/2-gtfs/src/
 1-data/2-popmasks/
@@ -18,4 +18,4 @@
 1-data/3-traveltime-cache/
 1-data/3-traveltime-cities/
 
-4-misc/
+0-misc/
