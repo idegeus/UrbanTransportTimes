@@ -91,11 +91,11 @@ class GtfsDownloader:
             
             # Construct source GTFS path and check for existence.
             gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
-            if os.path.exists(gtfs_out) and not force_dl:
+            if os.path.exists(gtfs_in) and not force_dl:
                 logging.debug(f"Skipping already downloaded {feed_id}")
                 continue
             
-            # If does not exist, download to gtfs_out.
+            # If does not exist, download to gtfs_in.
             logging.info(f"Downloading {gtfs_in}")
             feed = f"https://transit.land/api/v2/rest/feeds/{feed_id}/download_latest_feed_version"
             params = {"apikey": self.tl_key}
