@@ -92,7 +92,10 @@ for pid, city in cities.iterrows():
     graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
     graphhopper.set_osm(osm_out)
     graphhopper.set_gtfs(feed_paths)
-    graphhopper.build()
+    result = graphhopper.build()
+    if not result:
+        logging.critical(f"Skipping {city.city_name} ({city.city_id}) due to insuccessful docker build.")
+        continue;
     
     # Try to calibrate example build.
     sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)

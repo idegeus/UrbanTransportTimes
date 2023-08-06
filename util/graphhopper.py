@@ -181,7 +181,9 @@ class Graphhopper:
                         logging.critical("Factor above max speed, graphhopper quitting.")
                     if "Profiles do not match" in line:
                         clean_cache_folder = True
-                                    
+                
+                return True
+                
                 # If stream ends without showing Server Started line, it's a problem. Try again.
                 # raise InterruptedError("Problem while successfully creating docker, please try again.") #TODO: Re-enable this.
         
@@ -192,6 +194,8 @@ class Graphhopper:
             except Exception:
                 logging.critical("Something happened that stopped the querying:")
                 logging.critical(traceback.format_exc())
+
+        return False
     
     def stop(self):
         self.container.stop()
