@@ -144,7 +144,7 @@ class Graphhopper:
         
         # Remove other dockers
         mem = os.environ.get('MEMORY', 8)
-        docker_image = os.environ.get('DOCKER_IMG', "israelhikingmap/graphhopper")
+        docker_image = os.environ.get('DOCKER_IMG', "ivotje50/graphhopper")
         for d in self.dclient.containers.list(filters={"label": "DUTTv2_container=yes"}):
             logging.info(d)
             d.stop()
@@ -157,7 +157,7 @@ class Graphhopper:
             try:
                 # Starting docker
                 logging.info(f"Starting docker build, time estim. ~5min. (mem={mem}g, attempt=#{attempt+1})")
-                clean_cache_folder = "&& rm -rf 1-data/2-gh/graph-cache/" if clean_cache_folder else ""
+                clean_cache_folder = "&& rm -rf 1-data/2-gh/graph-cache/" if clean_cache_folder == True else ""
                 self.container = self.dclient.containers.run(
                     image=docker_image, 
                     detach=True,
@@ -179,6 +179,11 @@ class Graphhopper:
                         return
                     if "custom speed <= maxSpeed" in line:
                         logging.critical("Factor above max speed, graphhopper quitting.")
+                    if "Profiles do not match" in line:
+                        clean_cache_folder = True
+                    if "but cannot be lower than" in line:
+                        logging.critical("Some problem with OSM file, removing and retrying.")
+                        os.remove(self.config['graphhopper']['datareader.file'])
                                     
                 # If stream ends without showing Server Started line, it's a problem. Try again.
                 # raise InterruptedError("Problem while successfully creating docker, please try again.") #TODO: Re-enable this.
@@ -381,8 +386,8 @@ def test():
     
     # Set logging and variables, define data working folder
     load_dotenv()
-    logging.getLogger().setLevel(logging.INFO) # DEBUG, INFO or WARN
-    DROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../1-data')
+    logging.getLogger().setLevel(logging.DEBUG) # DEBUG, INFO or WARN
+    DROOT = '../1-data'
     urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, "2-external"), target_dir=os.path.join(DROOT, "2-popmasks"), res=1000)
     
     # Read a test city to be processed.

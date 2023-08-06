@@ -35,7 +35,7 @@ load_dotenv()
 
 # Read a test city to be processed.
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
-# cities = cities[cities.city_name == 'Stockholm']
+# cities = cities[cities.city_name == 'Brussels']
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
 # Initialise Graphhopper client.
@@ -81,42 +81,28 @@ for pid, city in cities.iterrows():
     osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
-    
+            
     # Fetch GTFS files
     gtfs_client.set_search(bbox.centroid, bbox, 10000)
     feed_ids = gtfs_client.search_feeds()
     gtfs_out_dir = os.path.join(DROOT, '2-gtfs')
     feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.city_id)
     
-    for attempt in range(5):
+    # Boot Graphhopper instance
+    graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
+    graphhopper.set_osm(osm_out)
+    graphhopper.set_gtfs(feed_paths)
+    graphhopper.build()
     
-        # Flag for recreating if exception
-        force = False
-        
-        # Start GraphHopper instance.
-        try:
-            # Boot Graphhopper instance
-            graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
-            graphhopper.set_osm(osm_out)
-            graphhopper.set_gtfs(feed_paths)
-            graphhopper.build()
-            
-            # Try to calibrate example build.
-            sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
-            sample = sample.apply(lambda x: graphhopper.nearest(x))
-            graphhopper.calibrate(sample, force=force)
-            
-            # Fetch isochrones.
-            points = gdf.centroid.to_crs("EPSG:4326").apply(lambda x: graphhopper.nearest(x))
-            isochrones = isochrone_client.get_isochrones(
-                city_id=city.city_id, 
-                points=points,
-                config=isochrone_config
-            )
-            break
-
-        except Exception:
-            logging.critical("Something happened that stopped the querying:")
-            logging.critical(traceback.format_exc())
-            force=True
-            pass
+    # Try to calibrate example build.
+    sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
+    sample = sample.apply(lambda x: graphhopper.nearest(x))
+    graphhopper.calibrate(sample)
+    
+    # Fetch isochrones.
+    points = gdf.centroid.to_crs("EPSG:4326").apply(lambda x: graphhopper.nearest(x))
+    isochrones = isochrone_client.get_isochrones(
+        city_id=city.city_id, 
+        points=points,
+        config=isochrone_config
+    )
