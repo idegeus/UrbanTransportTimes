@@ -77,7 +77,7 @@ for pid, city in cities.iterrows():
         continue
     
     # Create OSM extracts
-    osm_src = os.environ.get('OSM_PLANET_PBF', os.path.join(DROOT, '2-osm', 'src', 'europe-latest.osm.pbf'))
+    osm_src = os.environ.get('OSM_PLANET_PBF', os.path.join(DROOT, '2-osm', 'src', 'planet-latest.osm.pbf'))
     osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
