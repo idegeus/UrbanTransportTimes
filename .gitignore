@@ -3,6 +3,7 @@
 **/*.log.*
 **/__pycache__
 **/.DS_Store
+y/
 
 1-data/0-tmp/
 1-data/2-external/
