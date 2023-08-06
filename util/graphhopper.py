@@ -181,9 +181,6 @@ class Graphhopper:
                         logging.critical("Factor above max speed, graphhopper quitting.")
                     if "Profiles do not match" in line:
                         clean_cache_folder = True
-                    if "but cannot be lower than" in line:
-                        logging.critical("Some problem with OSM file, removing and retrying.")
-                        os.remove(self.config['graphhopper']['datareader.file'])
                                     
                 # If stream ends without showing Server Started line, it's a problem. Try again.
                 # raise InterruptedError("Problem while successfully creating docker, please try again.") #TODO: Re-enable this.
