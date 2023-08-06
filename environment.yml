@@ -1,8 +1,6 @@
 name: DUTTv2
 channels:
   - conda-forge
-  - https://conda.anaconda.org/gurobi
-  - defaults
 dependencies:
   - rasterio
   - pyproj
@@ -14,4 +12,4 @@ dependencies:
   - nb_conda_kernels
   - openpyxl
   - ipywidgets
-prefix: /Users/ivo/opt/anaconda3/envs/DUTTv2
+prefix: /data/volume_2/mambaforge/envs/DUTTv2
