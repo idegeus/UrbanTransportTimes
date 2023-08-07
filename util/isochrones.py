@@ -69,6 +69,23 @@ class Isochrones:
         result = result.set_geometry('isochrone')
         
         return result
+
+    def _check_cached_booleans(self, city_id, batch):
+        """Reads cache with polygons in a SQLite database, returning a bool whether a row is cached."""
+        
+        assert isinstance(batch, pd.DataFrame)
+        batch = batch.set_index('uid')
+        
+        logging.debug("Finding isochrones from cache..")
+        with self.con:
+            qry = f"SELECT uid FROM isochrone WHERE city_id='{city_id}'"
+            cached = pd.read_sql_query(qry, self.con)
+        
+        cached['cache_avail'] = True
+        result = batch.merge(cached, how='left', on='uid')
+        result['cache_avail'] = result.cache_avail.fillna(False)
+        
+        return result
     
     def _save_cache(self, item, polygon):
         """Saves cache with multipolygon in a SQLite database."""
@@ -293,8 +310,8 @@ class Isochrones:
         logging.debug(f"Converted batch to timezone {tz}.")
         
         # Check cache
-        batch_cached = self._check_caches(city_id, batch)
-        to_fetch = batch_cached[(batch_cached.geometry.isna()) & (~batch_cached.geometry.is_empty)]
+        batch_cached = self._check_cached_booleans(city_id, batch)
+        to_fetch = batch_cached[~batch_cached.cache_avail]
         frac_done = 1 - (len(to_fetch)/len(batch))
         logging.info(f"Out of total {len(batch)}, {frac_done*100:.1f}% cached.")
         
@@ -339,7 +356,7 @@ def test():
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
-    osm_src = os.path.join(DROOT, '2-osm', 'src', 'europe-latest.osm.pbf')
+    osm_src = os.environ.get('OSM_PLANET_PBF', os.path.join(DROOT, '2-osm', 'src', 'planet-latest.osm.pbf'))
     osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
