@@ -81,31 +81,37 @@ for pid, city in cities.iterrows():
     osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
-            
-    # Fetch GTFS files
-    gtfs_client.set_search(bbox.centroid, bbox, 10000)
-    feed_ids = gtfs_client.search_feeds()
-    gtfs_out_dir = os.path.join(DROOT, '2-gtfs')
-    feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.city_id)
     
-    # Boot Graphhopper instance
-    graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
-    graphhopper.set_osm(osm_out)
-    graphhopper.set_gtfs(feed_paths)
-    result = graphhopper.build()
-    if not result:
-        logging.critical(f"Skipping {city.city_name} ({city.city_id}) due to insuccessful docker build.")
-        continue;
+    try:
     
-    # Try to calibrate example build.
-    sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
-    sample = sample.apply(lambda x: graphhopper.nearest(x))
-    graphhopper.calibrate(sample)
-    
-    # Fetch isochrones.
-    points = gdf.centroid.to_crs("EPSG:4326").apply(lambda x: graphhopper.nearest(x))
-    isochrones = isochrone_client.get_isochrones(
-        city_id=city.city_id, 
-        points=points,
-        config=isochrone_config
-    )
+        # Fetch GTFS files
+        gtfs_client.set_search(bbox.centroid, bbox, 10000)
+        feed_ids = gtfs_client.search_feeds()
+        gtfs_out_dir = os.path.join(DROOT, '2-gtfs')
+        feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.city_id)
+        
+        # Boot Graphhopper instance
+        graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
+        graphhopper.set_osm(osm_out)
+        graphhopper.set_gtfs(feed_paths)
+        result = graphhopper.build()
+        if not result:
+            logging.critical(f"Skipping {city.city_name} ({city.city_id}) due to insuccessful docker build.")
+            continue;
+        
+        # Try to calibrate example build.
+        sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
+        sample = sample.apply(lambda x: graphhopper.nearest(x))
+        graphhopper.calibrate(sample)
+        
+        # Fetch isochrones.
+        points = gdf.centroid.to_crs("EPSG:4326").apply(lambda x: graphhopper.nearest(x))
+        isochrones = isochrone_client.get_isochrones(
+            city_id=city.city_id, 
+            points=points,
+            config=isochrone_config
+        )
+
+    except:
+        logging.critical("Problem, continuing with next city.")
+        logging.critical(traceback.print_exc())
