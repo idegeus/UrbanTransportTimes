@@ -102,6 +102,8 @@ class GtfsDownloader:
             response = requests.get(feed, params=params)
             with open(gtfs_in, 'wb') as f:
                 f.write(response.content)
+            del feed
+            del response
         
         # Trim GTFS size to bounding box
         feeds = []
@@ -119,16 +121,16 @@ class GtfsDownloader:
                 else:
                     # Read the feed with gtfs-kit, restrict to bounding box, and write out.
                     logging.info(f"Creating GTFS extract at {gtfs_out}. (force_extr={str(force_extr)})")
-                    feed = gk.read_feed(gtfs_in, dist_units='km')
+                    newfeed = gk.read_feed(gtfs_in, dist_units='km')
                     
                     logging.debug(f'===== Feed {feed_id} before limiting:')
-                    logging.debug(feed.routes.head(10))
-                    logging.debug(f'Routes: {feed.routes.shape}')
-                    logging.debug(f'Stops: {feed.stops.shape}')
-                    logging.debug(f'Trips: {feed.trips.shape}')
+                    logging.debug(newfeed.routes.head(10))
+                    logging.debug(f'Routes: {newfeed.routes.shape}')
+                    logging.debug(f'Stops: {newfeed.stops.shape}')
+                    logging.debug(f'Trips: {newfeed.trips.shape}')
                     
                     # Limit geographic and date range
-                    newfeed = feed.restrict_to_area(self.bbox_gdf).restrict_to_dates(['20230725']) 
+                    newfeed = newfeed.restrict_to_area(self.bbox_gdf)
                     newfeed = newfeed.create_shapes(all_trips=True) # Recreate shapes for accuracy.
                     newfeed.write(gtfs_out)
                 
