@@ -1,3 +1,4 @@
+import datetime
 import os
 import traceback
 from shapely.geometry import Point, Polygon
@@ -62,16 +63,15 @@ class GtfsDownloader:
         
         return feed_ids
         
-    def download_feeds(self, feed_ids, target_dir, city_id, merge=False, force_dl=False, force_extr=False):
+    def download_feeds(self, feed_ids, target_dir, city_id, datefilter_list, force_dl=False, force_extr=False):
         """Downloads feeds from TransitLand from feed_ids to target_id, cutting 
         out by set bbox. Can merge all feeds into one zip. 
-        
 
         Args:
             feed_ids (list): Transitland O-Ids
             target_dir (Path): Working directory for files. Input will end up in subdir src, output in subdir out.
             city_id (str): Unique id for the cutout.
-            merge (bool, optional): Merges all feeds into one zipfile. Defaults to False.
+            date (datetime): Datetime to filter GTFS feeds for, to make parsing leaner. 
             force_dl (bool, optional): Force refresh of all source feed files. Defaults to False.
             force_extr (bool, optional): Force extraction of all source feed files. Defaults to False.
 
@@ -80,7 +80,12 @@ class GtfsDownloader:
         """
         
         assert os.path.exists(target_dir)
-        assert isinstance(city_id, str) or isinstance(city_id, int) or isinstance(city_id, np.int64)
+        assert isinstance(city_id, (str, int, np.int64))
+        assert isinstance(datefilter_list, list)
+        for dt in datefilter_list:
+            assert isinstance(dt, (datetime.datetime, datetime.date))
+            assert dt > datetime.datetime.now() # Almost all feeds are only available for the future. 
+        datefilter_str = [dt.strftime("%Y%m%d") for dt in datefilter_list]
         
         # Create in- and output directories.
         os.makedirs(os.path.join(target_dir, 'src'), exist_ok=True)
@@ -92,11 +97,16 @@ class GtfsDownloader:
             # Construct source GTFS path and check for existence.
             gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
             if os.path.exists(gtfs_in) and not force_dl:
-                logging.debug(f"Skipping already downloaded {feed_id}")
-                continue
-            
+                
+                # Check for recency (less than one week old)
+                if datetime.datetime.fromtimestamp(os.path.getctime(gtfs_in)) > (datetime.datetime.now() - datetime.timedelta(weeks=1)):
+                    logging.debug(f"Skipping already recently downloaded {feed_id}")
+                    continue
+                else:
+                    logging.debug(f"Refreshing source feed {gtfs_in}")
+                    
             # If does not exist, download to gtfs_in.
-            logging.info(f"Downloading {gtfs_in}")
+            logging.info(f"Downloading {gtfs_in} (force_dl={str(force_dl)})")
             feed = f"https://transit.land/api/v2/rest/feeds/{feed_id}/download_latest_feed_version"
             params = {"apikey": self.tl_key}
             response = requests.get(feed, params=params)
@@ -111,7 +121,7 @@ class GtfsDownloader:
 
             # Declare the directory path for the GTFS zip file
             gtfs_in = os.path.join(target_dir, 'src', f'{feed_id}.gtfs.zip')
-            gtfs_out = os.path.join(target_dir, 'out', f'{city_id}-{feed_id}.gtfs.zip')
+            gtfs_out = os.path.join(target_dir, 'out', f'{city_id}-{datefilter_str[0]}-{datefilter_str[-1]}-{feed_id}.gtfs.zip')
             
             # Check if it already exists, if so, read in (if needed) and skip.
             try:
@@ -129,8 +139,9 @@ class GtfsDownloader:
                     logging.debug(f'Stops: {newfeed.stops.shape}')
                     logging.debug(f'Trips: {newfeed.trips.shape}')
                     
-                    # Limit geographic and date range
+                    # Limit geographic and date range.
                     newfeed = newfeed.restrict_to_area(self.bbox_gdf)
+                    newfeed = newfeed.restrict_to_dates(list(set(datefilter_str)))
                     newfeed = newfeed.create_shapes(all_trips=True) # Recreate shapes for accuracy.
                     newfeed.write(gtfs_out)
                 
@@ -178,4 +189,5 @@ if __name__ == "__main__":
     gtfs_client.set_search(centroid, bbox, radius)
     feed_ids = gtfs_client.search_feeds()
     logging.info(feed_ids)
-    gtfs_client.download_feeds(feed_ids, '../1-data/2-gtfs/', 12345, force_extr=True)
+    dates = [datetime.datetime(2023, 8, 22), datetime.datetime(2023, 8, 23)]
+    gtfs_client.download_feeds(feed_ids, '../1-data/2-gtfs/', 12345, dates, force_dl=False, force_extr=False)

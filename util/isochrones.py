@@ -361,10 +361,14 @@ def test():
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
     
+    # Set datetimes
+    peak_dt = datetime(2023, 8, 22, 8, 30, 0)
+    off_dt  = datetime(2023, 8, 23, 13, 30, 0)
+    
     # Fetch GTFS files
     gtfs_client.set_search(bbox.centroid, bbox, 10000)
     feed_ids = gtfs_client.search_feeds()
-    feed_paths = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), city.city_id)
+    feed_paths = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), city.city_id, [peak_dt, off_dt])
     
     # Boot Graphhopper instance
     graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
@@ -372,9 +376,7 @@ def test():
     graphhopper.set_gtfs(feed_paths)
     graphhopper.build()
     
-    # Set queries and
-    peak_dt = datetime(2023, 6, 13, 8, 30, 0)
-    off_dt  = datetime(2023, 6, 13, 13, 30, 0)
+    # Set queries
     isochrone_config = [
         # ('driving',          [10, 25], peak_dt, 'b'),
         # ('transit',          [15, 30], peak_dt, 'b'),

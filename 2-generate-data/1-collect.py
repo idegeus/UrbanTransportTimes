@@ -35,7 +35,7 @@ load_dotenv()
 
 # Read a test city to be processed.
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
-# cities = cities[cities.city_name == 'Brussels']
+# cities = cities[cities.city_name == 'Paris']
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
 # Initialise Graphhopper client.
@@ -52,8 +52,8 @@ for pid, city in cities.iterrows():
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
-    peak_dt = datetime(2023, 6, 13, 8, 30, 0)
-    off_dt  = datetime(2023, 6, 13, 13, 30, 0)
+    peak_dt = datetime(2023, 8, 22, 8, 30, 0)
+    off_dt  = datetime(2023, 8, 22, 13, 30, 0)
     isochrone_config = [
         ('transit_off',        [15, 30], off_dt,  'g'),
         ('transit_peak',       [15, 30], peak_dt, 'g'),
@@ -73,7 +73,7 @@ for pid, city in cities.iterrows():
         dry_run=True
     )
     warnings.filterwarnings('ignore', 'GeoSeries.notna', UserWarning)
-    if (result.isochrone.notna().sum() / result.shape[0]) == 1.0:
+    if (result.cache_avail.sum() / result.shape[0]) == 1.0:
         continue
     
     # Create OSM extracts
@@ -87,13 +87,12 @@ for pid, city in cities.iterrows():
         # Fetch GTFS files
         gtfs_client.set_search(bbox.centroid, bbox, 10000)
         feed_ids = gtfs_client.search_feeds()
-        gtfs_out_dir = os.path.join(DROOT, '2-gtfs')
-        feed_paths = gtfs_client.download_feeds(feed_ids, gtfs_out_dir, city.city_id)
+        feeds = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), city.city_id, [peak_dt, off_dt])
         
         # Boot Graphhopper instance
         graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
         graphhopper.set_osm(osm_out)
-        graphhopper.set_gtfs(feed_paths)
+        graphhopper.set_gtfs(feeds)
         graphhopper.build()
         
         # Try to calibrate example build.
