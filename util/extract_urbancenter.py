@@ -78,32 +78,32 @@ class ExtractCenters:
         """Get the first polygon in a GeoDataFrame as GeoJSON."""
         return [json.loads(gdf.to_json())['features'][0]['geometry']]
         
-    def extract_city(self, city_name, ID_HDC_G0, buffer=0):
+    def extract_city(self, city_name, city_id, buffer=0):
         """Creates GeoDataFrames and GeoTIFF extracts from Population Rasters. 
 
         Args:
             city_name (_type_): _description_
-            ID_HDC_G0 (_type_): _description_
+            city_id (_type_): _description_
             buffer (integer): adds meters of buffer around zone.
         """
         
         # Paths
-        tiff_path = os.path.join(self.target_dir, f"{ID_HDC_G0}.buf{buffer}.res{self.res}.tiff")
-        pcl_path  = os.path.join(self.target_dir, f"{ID_HDC_G0}.buf{buffer}.res{self.res}.pcl")
+        tiff_path = os.path.join(self.target_dir, f"{city_id}.buf{buffer}.res{self.res}.tiff")
+        pcl_path  = os.path.join(self.target_dir, f"{city_id}.buf{buffer}.res{self.res}.pcl")
         
         # Log, and if city already done, skip this.
         if(os.path.exists(tiff_path) and os.path.exists(pcl_path)):
-            logging.debug(f"Population raster extract already exists: {city_name} ({ID_HDC_G0}.buf{buffer}.res{self.res})")
+            logging.debug(f"Population raster extract already exists: {city_name} ({city_id}.buf{buffer}.res{self.res})")
             return pcl_path
         else:
-            logging.info(f"Creating population extract for city: {city_name} ({ID_HDC_G0}.buf{buffer}.res{self.res})")
+            logging.info(f"Creating population extract for city: {city_name} ({city_id}.buf{buffer}.res{self.res})")
         
         # Only initialise rasters if we know we have to do some work, e.g., now.
         if not self.initialised:
             self._load_rasters()
         
         # Write out a masked selection with city population.
-        center_gdf = self.urbancenter_gdf[self.urbancenter_gdf.ID_HDC_G0 == ID_HDC_G0]
+        center_gdf = self.urbancenter_gdf[self.urbancenter_gdf.city_id == city_id]
         center_gdf = center_gdf.to_crs(center_gdf.estimate_utm_crs()).buffer(buffer).to_crs(center_gdf.crs)
         self._mask_raster_to_tiff(
             gdf_entry=center_gdf,
@@ -153,5 +153,5 @@ if __name__ == "__main__":
     for city in city_list_df.itertuples():
         urbancenter_client.extract_city(
             city_name=city.City, 
-            ID_HDC_G0=city.ID_HDC_G0, 
+            city_id=city.city_id, 
             buffer=0)

@@ -394,11 +394,11 @@ def test():
     # Read a test city to be processed.
     cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
     city = cities[cities.City == 'Stockholm'].iloc[0]
-    pcl_path = urbancenter_client.extract_city(city.City, city.ID_HDC_G0)
+    pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
     # Run default example build. 
-    graphhopper = Graphhopper(droot=DROOT, city=city.ID_HDC_G0)
+    graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
     graphhopper.set_osm("/1-data/2-osm/example/stockholm.osm.pbf") # 2973
     graphhopper.set_gtfs(["/1-data/2-gtfs/example/2973-f-u-flixbus.gtfs.zip", "/1-data/2-gtfs/example/2973-f-u-se.gtfs.zip"])
     graphhopper.build()

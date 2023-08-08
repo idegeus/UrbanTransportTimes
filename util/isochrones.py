@@ -391,7 +391,7 @@ def test():
     ]
     
     isochrones = isochrone_client.get_isochrones(
-        city_id=city.ID_HDC_G0, 
+        city_id=city.city_id, 
         points=gdf.centroid.to_crs("EPSG:4326"),
         config=isochrone_config
     )
