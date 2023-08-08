@@ -56,14 +56,14 @@ for pid, city in cities.iterrows():
     peak_dt = datetime(2023, 8, 22, 8, 30, 0)
     off_dt  = datetime(2023, 8, 22, 13, 30, 0)
     isochrone_config = [
-        ('transit_off',        [15, 30], off_dt,  'g'),
-        ('transit_peak',       [15, 30], peak_dt, 'g'),
-        ('transit_bike_off',   [15, 30], off_dt,  'g'),
-        ('transit_bike_peak',  [15, 30], peak_dt, 'g'),
         ('driving_off',        [10, 25], off_dt,  'g'),
         ('driving_peak',       [10, 25], peak_dt, 'g'),
         ('cycling',            [15, 30], peak_dt, 'g'), 
-        ('walking',            [15, 30], peak_dt, 'g')
+        ('walking',            [15, 30], peak_dt, 'g'),
+        ('transit_off',        [15, 30], off_dt,  'g'),
+        ('transit_peak',       [15, 30], peak_dt, 'g'),
+        ('transit_bike_off',   [15, 30], off_dt,  'g'),
+        ('transit_bike_peak',  [15, 30], peak_dt, 'g')
     ]
     
     # Check if records are all done 
@@ -89,6 +89,24 @@ for pid, city in cities.iterrows():
         gtfs_client.set_search(bbox.centroid, bbox, 10000)
         feed_ids = gtfs_client.search_feeds()
         feeds = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), city.city_id, [peak_dt, off_dt])
+        
+        # Conditionally fetch transit information. 
+        isochrone_config = [
+            ('driving_off',        [10, 25], off_dt,  'g'),
+            ('driving_peak',       [10, 25], peak_dt, 'g'),
+            ('cycling',            [15, 30], peak_dt, 'g'), 
+            ('walking',            [15, 30], peak_dt, 'g')
+        ]
+        
+        if len(feeds) > 0:
+            isochrone_config += [
+                ('transit_off',        [15, 30], off_dt,  'g'),
+                ('transit_peak',       [15, 30], peak_dt, 'g'),
+                ('transit_bike_off',   [15, 30], off_dt,  'g'),
+                ('transit_bike_peak',  [15, 30], peak_dt, 'g')
+            ]
+        else:
+            logging.warning(f"No fitting feeds for {city.city_name} ({city.city_id}) were found.")
         
         # Boot Graphhopper instance
         graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
