@@ -17,13 +17,14 @@ def extract_osm(osm_src, osm_out, bbox, buffer_m=0, force=False):
     Returns 0 if successful. 
     """
     
-    assert os.path.exists(osm_src)
     assert isinstance(bbox, Polygon)
     
     # Skip if already exists. 
     if os.path.exists(osm_out) and not force:
         logging.info(f'Extract already exists: {osm_out}')
         return 0
+    
+    assert os.path.exists(osm_src)
     
     # Define bounding box and add buffer if required
     bbox_gdf = gpd.GeoSeries(data=[bbox], crs="EPSG:4326")
