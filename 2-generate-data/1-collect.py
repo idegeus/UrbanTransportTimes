@@ -34,7 +34,7 @@ logging.getLogger().addHandler(console_handler)
 load_dotenv()
 
 # Read a test city to be processed.
-cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
+cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.latest.xlsx'))
 # cities = cities[cities.city_name == 'Paris']
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
