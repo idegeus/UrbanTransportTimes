@@ -64,13 +64,15 @@ class Isochrones:
         cached['geometry'] = cached['geometry'].apply(lambda x: wkt.loads(x) if isinstance(x, str) else None)
         cached = cached.rename(columns={'geometry': 'isochrone'})
         cached = gpd.GeoDataFrame(cached, crs='EPSG:4326', geometry='isochrone')
+        cached['cache_avail'] = True
         
         result = batch.merge(cached, how='left', on='uid')
         result = result.set_geometry('isochrone')
+        result['cache_avail'] = result.cache_avail.fillna(False)
         
         return result
 
-    def _check_cached_booleans(self, city_id, batch):
+    def _check_caches_bool(self, city_id, batch):
         """Reads cache with polygons in a SQLite database, returning a bool whether a row is cached."""
         
         assert isinstance(batch, pd.DataFrame)
@@ -260,7 +262,7 @@ class Isochrones:
             # Save cache
             self._save_cache(item, geometry)
 
-    def get_isochrones(self, city_id, points, config, dry_run=False):
+    def get_isochrones(self, city_id, points, config, dry_run=False, dry_run_geometry=False):
         """
         Gets isochrones for specific points. 
         
@@ -310,7 +312,10 @@ class Isochrones:
         logging.debug(f"Converted batch to timezone {tz}.")
         
         # Check cache
-        batch_cached = self._check_cached_booleans(city_id, batch)
+        if dry_run_geometry:
+            batch_cached = self._check_caches(city_id, batch)
+        else:
+            batch_cached = self._check_caches_bool(city_id, batch)
         to_fetch = batch_cached[~batch_cached.cache_avail]
         frac_done = 1 - (len(to_fetch)/len(batch))
         logging.info(f"Out of total {len(batch)}, {frac_done*100:.1f}% cached.")

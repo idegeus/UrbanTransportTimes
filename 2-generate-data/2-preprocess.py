@@ -10,6 +10,9 @@ logging.getLogger().setLevel(logging.INFO)
 from dotenv import load_dotenv
 load_dotenv()
 
+from tqdm import tqdm
+tqdm.pandas()
+
 # Import custom libraries
 sys.path.append(os.path.realpath('../'))
 from util.isochrones import Isochrones
@@ -46,7 +49,7 @@ for pid, city in cities.iterrows():
     ]
     
     # Check if records are all done 
-    isochrones, (_, _, frac_done) = isochrone_client.get_isochrones(
+    _, (_, _, frac_done) = isochrone_client.get_isochrones(
         city_id=city.city_id, 
         points=gdf.centroid.to_crs("EPSG:4326"),
         config=isochrone_config,
@@ -55,11 +58,21 @@ for pid, city in cities.iterrows():
     
     isochrone_pickle_path = os.path.join(DROOT, '3-traveltime-cities', f'{city.city_id}.isochrones.pcl')
     if os.path.exists(isochrone_pickle_path):
+        logging.info("Extract already exists, skipping")
         continue
     
     if frac_done < 1:
         logging.info("Not completed yet, skipping")
         continue
+    
+    # Fetch including geometry.
+    isochrones, (_, _, frac_done) = isochrone_client.get_isochrones(
+        city_id=city.city_id, 
+        points=gdf.centroid.to_crs("EPSG:4326"),
+        config=isochrone_config,
+        dry_run=True,
+        dry_run_geometry=True,
+    )
     
     isochrones = isochrones.merge(gdf, left_on='pid', right_index=True)
     isochrones.isochrone = isochrones.isochrone.fillna(Polygon())
