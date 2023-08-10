@@ -103,7 +103,7 @@ class ExtractCenters:
             self._load_rasters()
         
         # Write out a masked selection with city population.
-        center_gdf = self.urbancenter_gdf[self.urbancenter_gdf.city_id == city_id]
+        center_gdf = self.urbancenter_gdf[self.urbancenter_gdf.ID_HDC_G0 == city_id]
         center_gdf = center_gdf.to_crs(center_gdf.estimate_utm_crs()).buffer(buffer).to_crs(center_gdf.crs)
         self._mask_raster_to_tiff(
             gdf_entry=center_gdf,
