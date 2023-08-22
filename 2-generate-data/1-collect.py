@@ -41,7 +41,7 @@ logging.info(f"Total cities to be done: {cities.shape[0]}")
 # Initialise Graphhopper client.
 CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.main.v2.db')
 isochrone_client   = Isochrones(graphhopper_url="http://localhost:8989", db=CACHE, bing_key=os.environ['BING_API_KEY'])
-urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, '2-external'), target_dir=os.path.join(DROOT, '2-popmasks'), res=100)
+urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, '2-external'), target_dir=os.path.join(DROOT, '2-popmasks'), res=1000)
 gtfs_client        = GtfsDownloader(os.environ.get("TRANSITLAND_KEY"))
 
 for pid, city in cities.iterrows():
