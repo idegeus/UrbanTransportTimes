@@ -1,3 +1,4 @@
+import datetime
 import os
 import logging
 import stat
@@ -7,6 +8,8 @@ import itertools
 import geopandas as gpd
 from dotenv import load_dotenv
 from shapely.geometry import Point, LineString
+from timezonefinder import TimezoneFinder
+from pytz import timezone
 import docker
 import yaml
 import json
@@ -238,13 +241,10 @@ class Graphhopper:
         response = requests.post('http://localhost:8989/route', headers=headers, json=json_data)
         return response.json()
     
-    def route_google(self, point1, point2, period):
-        assert period in ['peak', 'off']
-        
-        if period == 'peak':
-            dp_datetime = '2023-08-15T06:30:00.045123456Z'
-        else:
-            dp_datetime = '2023-08-15T11:30:00.045123456Z'
+    def route_google(self, point1, point2, timestamp):        
+        assert isinstance(timestamp, datetime.datetime)
+        assert timestamp.tzinfo is not None
+        dp_datetime = timestamp.isoformat()
         
         google_key = os.environ.get("GOOGLE_KEY")
         headers = {
@@ -278,7 +278,7 @@ class Graphhopper:
         self.fetched_google += 1
         return response.json()
     
-    def get_comparison(self, points, factors, period, cache_dir=None):
+    def get_comparison(self, points, factors, timestamp, cache_dir=None):
         
         if not cache_dir:
             cache_dir = os.path.join(self.droot, '2-gh/calibrate-cache/')
@@ -290,15 +290,15 @@ class Graphhopper:
         self.fetched_google = 0
         results = []
         for ((p1_pid, p1), (p2_pid, p2)) in sample_routes:
-            google_cache = os.path.join(cache_dir, f"{self.city}-{p1_pid}-{p2_pid}-google-{period}.json")
+            google_cache = os.path.join(cache_dir, f"{self.city}-{p1_pid}-{p2_pid}-google-{timestamp.strftime('%h%m')}.json")
 
             response_google = {}
             if os.path.exists(google_cache):
                 response_google = json.load(open(google_cache, 'r'))
             if not 'routes' in response_google: # In case something went wrong initially. 
-                response_google = self.route_google(p1, p2, period=period)
+                response_google = self.route_google(p1, p2, timestamp=timestamp)
                 json.dump(response_google, open(google_cache, 'w'))
-                logging.debug(f'Fetched {p1_pid}->{p2_pid} from Google for {period}.')
+                logging.debug(f"Fetched {p1_pid}->{p2_pid} from Google for {timestamp.strftime('%h%m')}.")
             
             # Check if there's a route now.
             if not 'routes' in response_google:
@@ -336,7 +336,7 @@ class Graphhopper:
         
         return results
     
-    def calibrate(self, points, start_factors = np.full(5, 0.8), force=False, max=1.0):
+    def calibrate(self, points, peak_dt, off_dt, start_factors = np.full(5, 0.8), force=False, max=1.0):
         
         if self.calibrated and not force:
             logging.info('Already calibrated earlier based on cached factors, skipping. Add calibrate(force=True) to force.')
@@ -345,23 +345,30 @@ class Graphhopper:
         if len(points) > 20:
             logging.warning(f"With > 20 points, calibration is much slower while not much better. You gave {len(points)}.")
         
+        # Localise timezones
+        tz = timezone(TimezoneFinder().timezone_at(lng=points.iloc[0].x, lat=points.iloc[0].y))
+        peak_dt = peak_dt.replace(tzinfo=tz)
+        off_dt = off_dt.replace(tzinfo=tz)
+        logging.info(f"Formatted datetime to localised {peak_dt} and {off_dt}.")
+    
+        # Move points to actual roads.
         points = points.apply(lambda x: self.nearest(x))
         bounds = [(0.5, max)] * 5
-        period = ''
+        timestamp = ''
         def error_function(factors):
-            results = self.get_comparison(points, factors=factors, period=period)
+            results = self.get_comparison(points, factors=factors, timestamp=timestamp)
             return results.error_corrected.sum()
         
         try:
             # Peak-hour
             logging.info("Start calibration for peak-hour")
-            period = 'peak'
+            timestamp = peak_dt
             res_peak = minimize(error_function, start_factors, tol=5, bounds=bounds, method='Nelder-Mead', options={'maxfev': 40})
             self.set_factors(profile='car_cbr_peak', factors=res_peak.x.tolist())
             
             # Off-peak-hour
             logging.info("Start calibration for off-peak-hour")
-            period = 'off'
+            timestamp = off_dt
             res_off = minimize(error_function, start_factors, tol=5, bounds=bounds, method='Nelder-Mead', options={'maxfev': 40})
             self.set_factors(profile='car_cbr_off', factors=res_off.x.tolist())
             
@@ -392,25 +399,27 @@ def test():
     urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, "2-external"), target_dir=os.path.join(DROOT, "2-popmasks"), res=1000)
     
     # Read a test city to be processed.
-    cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.xlsx'))
-    city = cities[cities.City == 'Stockholm'].iloc[0]
+    cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.latest.xlsx'))
+    city = cities[cities.city_name == 'Stockholm'].iloc[0]
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
     # Run default example build. 
     graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
     graphhopper.set_osm("/1-data/2-osm/example/stockholm.osm.pbf") # 2973
-    graphhopper.set_gtfs(["/1-data/2-gtfs/example/2973-f-u-flixbus.gtfs.zip", "/1-data/2-gtfs/example/2973-f-u-se.gtfs.zip"])
+    graphhopper.set_gtfs([]) #"/1-data/2-gtfs/example/2973-f-u-flixbus.gtfs.zip", "/1-data/2-gtfs/example/2973-f-u-se.gtfs.zip"])
     graphhopper.build()
     
     # Try to calibrate example build.
-    # sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
-    # sample = sample.apply(lambda x: graphhopper.nearest(x))
-    # graphhopper.calibrate(sample)
+    sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
+    sample = sample.apply(lambda x: graphhopper.nearest(x))
+    peak_dt = datetime.datetime(2023, 9, 12, 8, 30, 0)
+    off_dt  = datetime.datetime(2023, 9, 12, 13, 30, 0)
+    graphhopper.calibrate(sample, peak_dt=peak_dt, off_dt=off_dt, force=True)
 
     # === Here you run the actual fetching. 
 
-    # graphhopper.stop()
+    graphhopper.stop()
     
 if __name__ == "__main__":
     test()

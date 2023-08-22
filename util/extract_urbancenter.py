@@ -36,6 +36,9 @@ class ExtractCenters:
         
         if not os.path.exists(pop_path) or not os.path.exists(urbancenter_path):
             logging.critical(f"Please download GHS-pop and UCDB (2020, resolution={self.res}m) from https://ghsl.jrc.ec.europa.eu/download.php")
+            print(os.path.exists(pop_path))
+            print(os.path.exists(urbancenter_path))
+            logging.info(urbancenter_path)
             raise FileExistsError()
         
         logging.info("Initialising population raster..")

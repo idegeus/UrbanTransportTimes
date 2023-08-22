@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 import traceback
 import pandas as pd
 import geopandas as gpd
-import datetime
+from datetime import datetime
 from dotenv import load_dotenv
 import warnings
 from urllib import error
@@ -36,10 +36,11 @@ load_dotenv()
 # Read a test city to be processed.
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.latest.xlsx'))
 cities = cities.sort_values(['priority', 'country_id', 'city_name'])
+cities = cities[cities.city_name == 'Trnava']
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
 # Initialise Graphhopper client.
-CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.main.v2.db')
+CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.michal.db')
 isochrone_client   = Isochrones(graphhopper_url="http://localhost:8989", db=CACHE, bing_key=os.environ['BING_API_KEY'])
 urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, '2-external'), target_dir=os.path.join(DROOT, '2-popmasks'), res=100)
 gtfs_client        = GtfsDownloader(os.environ.get("TRANSITLAND_KEY"))
@@ -52,8 +53,8 @@ for pid, city in cities.iterrows():
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     
-    peak_dt = datetime.datetime(2023, 9, 12, 8, 30, 0)
-    off_dt  = datetime.datetime(2023, 9, 12, 13, 30, 0)
+    peak_dt = datetime(2023, 8, 22, 8, 30, 0)
+    off_dt  = datetime(2023, 8, 22, 13, 30, 0)
     isochrone_config = [
         ('driving_off',        [10, 25], off_dt,  'g'),
         ('driving_peak',       [10, 25], peak_dt, 'g'),
