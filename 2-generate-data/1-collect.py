@@ -116,7 +116,7 @@ for pid, city in cities.iterrows():
         # Try to calibrate example build.
         sample = gdf.centroid.to_crs('EPSG:4326').sample(15, random_state=10)
         sample = sample.apply(lambda x: graphhopper.nearest(x))
-        graphhopper.calibrate(sample)
+        graphhopper.calibrate(sample, peak_dt=peak_dt, off_dt=off_dt)
         
         # Fetch isochrones.
         points = gdf.centroid.to_crs("EPSG:4326").apply(lambda x: graphhopper.nearest(x))
