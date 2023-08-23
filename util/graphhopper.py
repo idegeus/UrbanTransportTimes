@@ -2,6 +2,7 @@ import datetime
 import os
 import logging
 import stat
+import time
 import pandas as pd
 import numpy as np
 import itertools
@@ -380,15 +381,27 @@ class Graphhopper:
             raise e
 
     def nearest(self, point):
-        url = "http://localhost:8989/nearest"
-        response = requests.request("GET", url, params={"point": f"{point.y},{point.x}"}).json()
-        if not 'coordinates' in response:
-            logging.warning(f"GH Nearest no resolve: {response}")
-            return point
         
-        coords = response['coordinates']
+        for attempt in range(5):
+            try:
+                url = "http://localhost:8989/nearest"
+                response = requests.request("GET", url, params={"point": f"{point.y},{point.x}"}).json()
+                if not 'coordinates' in response:
+                    logging.warning(f"GH Nearest no resolve: {response}")
+                    return point
+                
+                coords = response['coordinates']
+                return Point(coords[0], coords[1])
+            
+            except ConnectionError as e:
+                if attempt < 5:
+                    logging.error("Couldn't connect to GraphHopper, waiting 1 second and trying again.")
+                    time.sleep(1)
+                    pass
+                else:
+                    logging.error("Couldn't connect to GraphHopper, raising error.")
+                    raise e
         
-        return Point(coords[0], coords[1])
 
 def test():
     
