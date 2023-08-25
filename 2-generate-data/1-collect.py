@@ -8,7 +8,6 @@ import geopandas as gpd
 import datetime
 from dotenv import load_dotenv
 import warnings
-from urllib import error
 
 # Import custom libraries
 DROOT = '../1-data'
@@ -35,6 +34,7 @@ load_dotenv()
 
 # Read a test city to be processed.
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.latest.xlsx'))
+cities = cities[cities.country_id == 'ESP']
 cities = cities.sort_values(['priority', 'country_id', 'city_name'])
 logging.info(f"Total cities to be done: {cities.shape[0]}")
 
@@ -87,7 +87,8 @@ for pid, city in cities.iterrows():
         # Fetch GTFS files
         gtfs_client.set_search(bbox.centroid, bbox, 10000)
         feed_ids = gtfs_client.search_feeds()
-        feeds = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), city.city_id, [peak_dt, off_dt])
+        feeds = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), 
+                                           city.city_id, [peak_dt, off_dt])
         
         # Conditionally fetch transit information. 
         isochrone_config = [
@@ -129,3 +130,4 @@ for pid, city in cities.iterrows():
     except:
         logging.critical("Problem, continuing with next city.")
         logging.critical(traceback.print_exc())
+        

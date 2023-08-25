@@ -21,7 +21,7 @@ from util.extract_urbancenter import ExtractCenters
 # Start processing cities.
 DROOT = '../1-data/'
 cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.latest.xlsx'))
-# cities = cities[cities.city_name == 'Utrecht']
+cities = cities[cities.country_id == 'NLD']
 CACHE = os.path.join(DROOT, '3-traveltime-cache', 'cache.main.v2.db')
 isochrone_client   = Isochrones(bing_key=os.environ['BING_API_KEY'], db=CACHE)
 urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, '2-external'), 
@@ -29,7 +29,12 @@ urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, '2-external'),
 
 for pid, city in cities.iterrows():
     
-    logging.info(f"=== Starting {city.city_name} ({city.city_id}) ===")
+    isochrone_pickle_path = os.path.join(DROOT, '3-traveltime-cities', f'{city.city_id}.isochrones.pcl')
+    if os.path.exists(isochrone_pickle_path):
+        logging.info(f"Extract for {city.city_name} already exists, skipping")
+        continue
+    
+    logging.info(f"Starting {city.city_name} ({city.city_id}) ===")
     
     # Extract urban center and read in as pickle
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
@@ -54,13 +59,7 @@ for pid, city in cities.iterrows():
         city_id=city.city_id, 
         points=gdf.centroid.to_crs("EPSG:4326"),
         config=isochrone_config,
-        dry_run=True
-    )
-    
-    isochrone_pickle_path = os.path.join(DROOT, '3-traveltime-cities', f'{city.city_id}.isochrones.pcl')
-    if os.path.exists(isochrone_pickle_path):
-        logging.info("Extract already exists, skipping")
-        continue
+        dry_run=True)
     
     if frac_done < 1:
         logging.info("Not completed yet, skipping")
@@ -82,7 +81,7 @@ for pid, city in cities.iterrows():
     # Add buffer to isochrones and calculate km2
     isochrones['isochrone']     = isochrones.isochrone.to_crs(isochrones.isochrone.estimate_utm_crs())
     isochrones['isochrone_buf'] = isochrones.isochrone.buffer(300)
-    isochrones['reach_km2']     = isochrones.isochrone.to_crs(isochrones.isochrone.estimate_utm_crs()).area
+    isochrones['isochrone_km2']     = isochrones.isochrone.to_crs(isochrones.isochrone.estimate_utm_crs()).area
     isochrones['isochrone']     = isochrones.isochrone.to_crs('EPSG:4326')
     isochrones['isochrone_buf'] = isochrones.isochrone_buf.to_crs('EPSG:4326')
     
@@ -94,7 +93,6 @@ for pid, city in cities.iterrows():
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id, buffer=15000)
     pop_gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
     pop_gdf = pop_gdf.rename(columns={'geometry': 'raster'}).set_geometry('raster').to_crs(pop_gdf.estimate_utm_crs())
-    pop_gdf['raster_km2'] = pop_gdf.raster.area
     pop_gdf = pop_gdf.to_crs('EPSG:4326')
 
     # Calculate reach
