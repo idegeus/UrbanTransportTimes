@@ -140,9 +140,30 @@ class GtfsDownloader:
                     logging.debug(f'Trips: {newfeed.trips.shape}')
                     
                     # Limit geographic and date range.
+                    logging.debug("Restricting area.")
                     newfeed = newfeed.restrict_to_area(self.bbox_gdf)
+                    
+                    logging.debug("Restricting dates.")
                     newfeed = newfeed.restrict_to_dates(list(set(datefilter_str)))
+                    
+                    logging.debug("Recreating shapes.")
                     newfeed = newfeed.create_shapes(all_trips=True) # Recreate shapes for accuracy.
+                    
+                    logging.debug("Fixing zombies.")
+                    # newfeed = newfeed.drop_zombies()
+                    
+                    logging.debug("Fixing stops.")
+                    # Drop stops with NaN as stop_id if there is more than one.
+                    # if newfeed.stops.stop_id.isna().sum() == 1:
+                    #     print("renaming the bastard")
+                    #     newfeed.stop_times.stop_id = newfeed.stop_times.stop_id.fillna("tmp_stop_id")
+                    #     newfeed.stops.stop_id = newfeed.stops.stop_id.fillna("tmp_stop_id")
+                    if newfeed.stops.stop_id.isna().sum() >= 1:
+                        logging.warning("Dropping the bastards")
+                        newfeed.stop_times = newfeed.stop_times[newfeed.stop_times.stop_id.notna()]
+                        newfeed.stops = newfeed.stops[newfeed.stops.stop_id.notna()]
+                    
+                    logging.debug("Writing out.")
                     newfeed.write(gtfs_out)
                 
             # Sometimes there's a read error. 

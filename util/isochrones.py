@@ -318,7 +318,7 @@ class Isochrones:
             batch_cached = self._check_caches_bool(city_id, batch)
         to_fetch = batch_cached[~batch_cached.cache_avail]
         frac_done = 1 - (len(to_fetch)/len(batch))
-        logging.info(f"Out of total {len(batch)}, {frac_done*100:.1f}% cached.")
+        logging.info(f"Out of total {len(batch)} ({len(points)} origins), {frac_done*100:.1f}% cached.")
         
         # Return if a dry run.
         if dry_run:
