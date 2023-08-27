@@ -1,3 +1,16 @@
+# Dockerfile setup:
+Op de server, volgende stappen: 
+* ```docker compose up```
+* ```docker compose run --rm certbot certonly --test-cert --webroot --webroot-path /var/www/certbot/ -d urbantransporttimes.com```
+
+Vernieuwen:
+```docker compose run --rm certbot renew```
+
+Zie ook: 
+* https://mindsers.blog/post/https-using-nginx-certbot-docker/
+* https://levelup.gitconnected.com/packaging-front-end-react-applications-under-a-production-environment-with-vite-and-nginx-in-docker-7e2739bc0494
+
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
