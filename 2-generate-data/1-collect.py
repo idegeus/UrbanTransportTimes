@@ -58,7 +58,7 @@ for pid, city in cities.iterrows():
 
     # Create OSM extracts
     osm_src = os.environ.get('OSM_PLANET_PBF', os.path.join(DROOT, '2-osm', 'src', 'planet-latest.osm.pbf'))
-    osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
+    osm_out = os.path.join(DROOT, '2-osm', 'out', f'{int(city.city_id)}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
     
@@ -79,11 +79,7 @@ for pid, city in cities.iterrows():
             ('driving_off',        [10, 25], off_dt,  'g'),
             ('driving_peak',       [10, 25], peak_dt, 'g'),
             ('cycling',            [15, 30], peak_dt, 'g'), 
-            ('walking',            [15, 30], peak_dt, 'g'),
-                ('transit_off',        [15, 30], off_dt,  'g'),
-                ('transit_peak',       [15, 30], peak_dt, 'g'),
-                ('transit_bike_off',   [15, 30], off_dt,  'g'),
-                ('transit_bike_peak',  [15, 30], peak_dt, 'g')
+            ('walking',            [15, 30], peak_dt, 'g')
         ]
         
         if len(feeds) == 0:
