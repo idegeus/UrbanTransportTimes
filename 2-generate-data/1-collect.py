@@ -62,8 +62,6 @@ for pid, city in cities.iterrows():
     bbox = gdf.to_crs('EPSG:4326').unary_union
     extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
     
-    continue;
-    
     try:
     
         # Set departure times
