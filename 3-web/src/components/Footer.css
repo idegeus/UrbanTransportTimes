@@ -1,0 +1,11 @@
+#footer{
+  width: 100%;
+  background-color: #3D405B;
+  margin-top: auto;
+}
+
+.footerContainer{
+  display: flex;
+  align-self: flex-end;
+  align-items: center;
+}

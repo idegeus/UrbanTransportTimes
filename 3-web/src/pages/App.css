@@ -1,0 +1,113 @@
+#root{
+  min-width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container{
+  display: flex;
+  width: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+div.heroes{
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 0;
+}
+
+.heroHeader{
+  flex: 1;
+  min-width: 300px;
+  padding: 0 2rem; 
+}
+
+.coloredCityContent{
+  color: #353535;
+}
+
+.coloredCity{
+  color: #E07A5F;
+  display: inline-block;
+  min-width: 15rem
+}
+
+div.cityMap{
+  flex: 1;
+  min-width: 400px;
+  min-height: 400px;
+  height: 100%
+}
+
+img.cityMapImage{
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+.animated{
+  animation: entering ease-in 1 100ms;
+}
+
+@keyframes entering{
+  from {
+    transform: translateX(50px);
+    opacity:0;
+  }
+  to {
+    transform: translateX(0px);
+    opacity:1;
+  }
+}
+
+.leaving{
+  animation: leaving ease-in 1 50ms;
+  opacity:0;
+}
+
+@keyframes leaving{
+  from {
+    transform: translateX(0px);
+    opacity:1;
+  }
+  to {
+    transform: translateX(-100px);
+    opacity:0;
+  }
+}
+
+.cityImageText{
+  width: 100%;
+  color: #b3b3b3;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #E07A5F);
+}
+
+.button{
+  padding: 13px 26px;
+  margin: 26px 0px;
+  text-align: center;
+  background: #E07A5F;
+  color: #fff;
+  width: auto;
+  display: inline-block;
+  transition: all 0.1s ease-in-out;
+}
+
+.button:hover{
+  filter: drop-shadow(0 0 2em #E07A5F);
+}
