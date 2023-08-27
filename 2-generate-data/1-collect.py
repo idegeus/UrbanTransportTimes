@@ -116,7 +116,7 @@ for pid, city in cities.iterrows():
         cities.loc[pid, 'n_req'] = batch_n
         cities.loc[pid, 'n_req_ok'] = batch_n_done
         cities.loc[pid, 'frac_req_ok'] = frac_done
-        cities.to_csv(cities_path, index_col=False)
+        cities.to_csv(cities_path, index=False)
         
     except:
         logging.critical("Problem, continuing with next city.")
