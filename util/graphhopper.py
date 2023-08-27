@@ -149,7 +149,7 @@ class Graphhopper:
         # Remove other dockers
         mem = os.environ.get('MEMORY', 8)
         docker_image = os.environ.get('DOCKER_IMG', "ivotje50/graphhopper")
-        for d in self.dclient.containers.list(filters={"label": "DUTTv2_container=yes"}):
+        for d in self.dclient.containers.list(filters={"label": "DUTTv2_container"}):
             logging.info(d)
             d.stop()
             d.remove(force=True)
@@ -166,7 +166,7 @@ class Graphhopper:
                     image=docker_image, 
                     detach=True,
                     init=True,
-                    labels={'DUTTv2_container': 'yes'},
+                    labels=['DUTTv2_container'],
                     command=f'"cd ../ {clean_cache_folder} && java -Xmx{mem}g -Xms{mem}g -jar ./graphhopper/*.jar server ./1-data/2-gh/config-duttv2.yml"',
                     environment={"JAVA_OPTS": f"-Xmx{mem}g -Xms{mem}g"},
                     volumes={os.path.realpath(self.droot): {'bind': '/1-data', 'mode': 'rw'}}, 
@@ -412,7 +412,7 @@ def test():
     urbancenter_client = ExtractCenters(src_dir=os.path.join(DROOT, "2-external"), target_dir=os.path.join(DROOT, "2-popmasks"), res=1000)
     
     # Read a test city to be processed.
-    cities = pd.read_excel(os.path.join(DROOT, '1-research', 'cities.latest.xlsx'))
+    cities = pd.read_csv(os.path.join(DROOT, '1-research', 'cities.latest.csv'))
     city = cities[cities.city_name == 'Stockholm'].iloc[0]
     pcl_path = urbancenter_client.extract_city(city.city_name, city.city_id)
     gdf = gpd.GeoDataFrame(pd.read_pickle(pcl_path))
@@ -428,11 +428,11 @@ def test():
     sample = sample.apply(lambda x: graphhopper.nearest(x))
     peak_dt = datetime.datetime(2023, 9, 12, 8, 30, 0)
     off_dt  = datetime.datetime(2023, 9, 12, 13, 30, 0)
-    graphhopper.calibrate(sample, peak_dt=peak_dt, off_dt=off_dt, force=True)
+    # graphhopper.calibrate(sample, peak_dt=peak_dt, off_dt=off_dt, force=True)
 
     # === Here you run the actual fetching. 
 
-    graphhopper.stop()
+    # graphhopper.stop()
     
 if __name__ == "__main__":
     test()
