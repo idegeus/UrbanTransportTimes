@@ -47,7 +47,7 @@ gtfs_client        = GtfsDownloader(os.environ.get("TRANSITLAND_KEY"))
 filter = (cities.country_id == 'ESP')
 for pid, city in cities.iterrows():
 
-    logging.info(f"{f'{city.city_name} ({city.city_id})' :=^20}")
+    logging.info(f"{f'{city.city_name} ({city.city_id})' :=^30}")
     if city.n_req == city.n_req_ok and city.frac_req_ok == 1.0:
         logging.info(f"Already completed, skipping.")
         continue
@@ -60,7 +60,7 @@ for pid, city in cities.iterrows():
     osm_src = os.environ.get('OSM_PLANET_PBF', os.path.join(DROOT, '2-osm', 'src', 'planet-latest.osm.pbf'))
     osm_out = os.path.join(DROOT, '2-osm', 'out', f'{city.city_id}.osm.pbf')
     bbox = gdf.to_crs('EPSG:4326').unary_union
-    # extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
+    extract_osm(osm_src, osm_out, bbox, buffer_m=20000)
     
     try:
     
@@ -69,10 +69,10 @@ for pid, city in cities.iterrows():
         off_dt  = datetime.datetime(2023, 9, 12, 13, 30, 0)
     
         # Fetch GTFS files
-        # gtfs_client.set_search(bbox.centroid, bbox, 10000)
-        # feed_ids = gtfs_client.search_feeds()
-        # feeds = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), 
-        #                                    city.city_id, [peak_dt, off_dt])
+        gtfs_client.set_search(bbox.centroid, bbox, 10000)
+        feed_ids = gtfs_client.search_feeds()
+        feeds = gtfs_client.download_feeds(feed_ids, os.path.join(DROOT, '2-gtfs'), 
+                                           city.city_id, [peak_dt, off_dt])
         
         # Conditionally fetch transit information. 
         isochrone_config = [
@@ -86,31 +86,15 @@ for pid, city in cities.iterrows():
                 ('transit_bike_peak',  [15, 30], peak_dt, 'g')
         ]
         
-        # if len(feeds) == 0:
-        #     logging.warning(f"No fitting feeds for {city.city_name} ({city.city_id}) were found.")
-        # else:
-        #     isochrone_config += [
-        #         ('transit_off',        [15, 30], off_dt,  'g'),
-        #         ('transit_peak',       [15, 30], peak_dt, 'g'),
-        #         ('transit_bike_off',   [15, 30], off_dt,  'g'),
-        #         ('transit_bike_peak',  [15, 30], peak_dt, 'g')
-        #     ]
-            
-        if True: # TMP TO update CSV File.
-            result, (batch_n, batch_n_done, frac_done) = isochrone_client.get_isochrones(
-                city_id=city.city_id, 
-                points=gdf.centroid.to_crs("EPSG:4326"),
-                config=isochrone_config,
-                dry_run=True
-            )
-            
-            # Write most recent city info out.
-            cities.loc[pid, 'n_cells'] = len(gdf.centroid.to_crs("EPSG:4326"))
-            cities.loc[pid, 'n_req'] = batch_n
-            cities.loc[pid, 'n_req_ok'] = batch_n_done
-            cities.loc[pid, 'frac_req_ok'] = frac_done
-            cities.to_csv(cities_path, index=False)
-            continue;
+        if len(feeds) == 0:
+            logging.warning(f"No fitting feeds for {city.city_name} ({city.city_id}) were found.")
+        else:
+            isochrone_config += [
+                ('transit_off',        [15, 30], off_dt,  'g'),
+                ('transit_peak',       [15, 30], peak_dt, 'g'),
+                ('transit_bike_off',   [15, 30], off_dt,  'g'),
+                ('transit_bike_peak',  [15, 30], peak_dt, 'g')
+            ]
         
         # Boot Graphhopper instance
         graphhopper = Graphhopper(droot=DROOT, city=city.city_id)
