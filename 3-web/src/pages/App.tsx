@@ -6,13 +6,21 @@ import './App.css'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 
+export interface ICitiesData {
+  [key: string]: {
+    city_id: number;
+    city_name: string;
+    frac_req_ok: number;
+  }[]
+}
+
 function App() {
 
   const cities = ['Amsterdam', 'Brussels', 'Copenhagen', 'Helsinki']
   const [cityIndex, setCityIndex] = useState(0)
   const [cityImage, setCityImage] = useState(amsterdam)
   const [imgLoading, setImgLoading] = useState('entering')
-  const [citiesData, setCitiesData] = useState({})
+  const [citiesData, setCitiesData] = useState<ICitiesData>({})
   import(`../assets/data/cities.json`).then(data => setCitiesData(data.default))
 
 
