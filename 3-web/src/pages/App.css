@@ -34,6 +34,9 @@ div.heroes{
 .coloredCity{
   color: #E07A5F;
   display: inline-block;
+}
+
+.animatedCityWidth{
   min-width: 15rem
 }
 
@@ -85,6 +88,7 @@ img.cityMapImage{
   width: 100%;
   color: #b3b3b3;
   text-align: center;
+  padding: 0 2rem;
 }
 
 .logo {
@@ -110,4 +114,23 @@ img.cityMapImage{
 
 .button:hover{
   filter: drop-shadow(0 0 2em #E07A5F);
+}
+
+.cityListContainer{
+  border-top: 1px solid #eee;
+  width: 100%;
+  padding: 2rem;
+}
+
+.cityListItem{
+  padding: 0.5rem 1rem; 
+  margin: 0 1rem 1rem 0; 
+  display: inline-flex;
+  background-color: #81B29A;
+  border-radius: 3px;
+}
+
+.cityListIndicator{
+  width: 0.8rem;
+  margin-left: 0.3rem;
 }

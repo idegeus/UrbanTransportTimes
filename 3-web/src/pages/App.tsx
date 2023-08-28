@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import amsterdam from '../assets/cities/Amsterdam.png'
+import doneImage from '../assets/check-circle-outline.svg'
+import progressImage from '../assets/timer-sand.svg'
 import './App.css'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
@@ -10,6 +12,9 @@ function App() {
   const [cityIndex, setCityIndex] = useState(0)
   const [cityImage, setCityImage] = useState(amsterdam)
   const [imgLoading, setImgLoading] = useState('entering')
+  const [citiesData, setCitiesData] = useState({})
+  import(`../assets/data/cities.json`).then(data => setCitiesData(data.default))
+
 
   useEffect(() => {
     setTimeout(() => {
@@ -32,7 +37,7 @@ function App() {
       <Header />
       <div className='container heroes'>
         <div className='heroHeader'>
-          <h1>Check how <span className={`coloredCity animated ${imgLoading}`}>{cities[cityIndex]}</span> scores on mobility equity.</h1>
+          <h1>Check how <span className={`coloredCity animatedCityWidth animated ${imgLoading}`}>{cities[cityIndex]}</span> scores on mobility equity.</h1>
           <div className='coloredCityContent'>
             <p>Mobility offers us options, opportunities and general wellbeing. DUTT allows a comparison between neighbourhoods and 
               whole cities to understand how well they move you, your neighbours, and everyone around you. Understand
@@ -49,6 +54,21 @@ function App() {
         <div className='cityMap'>
           <img src={cityImage} className={`cityMapImage animated ${imgLoading}`} />
           <div className='cityImageText'>Increase in accessibility by supplementing bike with public transit in {cities[cityIndex]}.</div>
+        </div>
+      </div>
+
+      <div className='container'>
+        <div className='cityListContainer'>
+          <h1><span className={`coloredCity`}>Cities</span> included</h1>
+          <p>Based on open source mapping data from OpenStreetMap and public transit data 
+            from TransitLand, we are able to create accessibility statistics for many cities, such as the following. </p>
+          {Object.keys(citiesData).map((key) => <>
+            <h3>{key}</h3>
+            {citiesData[key].map(({city_name, frac_req_ok}) => <div className='cityListItem'>
+              {city_name}
+              <img src={frac_req_ok == 1.0 ? doneImage : progressImage} className='cityListIndicator' />
+            </div>)}
+          </>)}
         </div>
       </div>
       <Footer />
